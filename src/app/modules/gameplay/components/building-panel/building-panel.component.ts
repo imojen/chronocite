@@ -78,6 +78,39 @@ interface BuildingWithProduction extends Building {
             <div class="stat-value">
               +{{ getMiningValue(building) | number : '1.1-1' }}
             </div>
+            } @else if (building.effect?.type === 'tick_rate') {
+            <div class="stat-label">Réduction du tick</div>
+            <div class="stat-value">
+              -{{
+                calculateEffectValue(building.effect?.value, building)
+                  | number : '1.1-1'
+              }}%
+            </div>
+            } @else if (building.effect?.type === 'cost_reduction') {
+            <div class="stat-label">Réduction des coûts</div>
+            <div class="stat-value">
+              -{{
+                calculateEffectValue(building.effect?.value) | number : '1.1-1'
+              }}%
+            </div>
+            } @else if (building.effect?.type === 'production_boost') { @if
+            (building.effect?.target) {
+            <div class="stat-label">
+              Bonus {{ getBuildingName(building.effect?.target || '') }}
+            </div>
+            } @else {
+            <div class="stat-label">Bonus global</div>
+            }
+            <div class="stat-value">
+              +{{
+                calculateBoostValue(building.effect?.value) | number : '1.1-1'
+              }}%
+            </div>
+            } @else if (building.effect?.type === 'resource_multiplier') {
+            <div class="stat-label">Multiplicateur de ressources</div>
+            <div class="stat-value">
+              ×{{ building.effect?.value || 1 | number : '1.1-1' }}
+            </div>
             } @else {
             <div class="stat-label">Production</div>
             <div class="stat-value">
@@ -1021,9 +1054,8 @@ export class BuildingPanelComponent {
   }
 
   getBuildingName(buildingId: string): string {
-    if (!buildingId) return '';
-    const building = this.gameService.getBuildingDefinition(buildingId);
-    return building?.name || '';
+    const building = BUILDINGS[buildingId];
+    return building ? building.name : '';
   }
 
   calculatePercentage(value?: number): number {
@@ -1032,6 +1064,20 @@ export class BuildingPanelComponent {
   }
 
   calculateBoostPercentage(value?: number): number {
+    if (!value) return 0;
+    return (value - 1) * 100;
+  }
+
+  calculateEffectValue(value?: number, building?: Building): number {
+    if (!value || !building) return 0;
+    const amount = this.gameService.getBuildingAmount(building.id);
+
+    // L'effet est cumulatif, donc on applique (1 - 0.95) = 5% autant de fois qu'on a de niveaux
+    const totalReduction = 1 - Math.pow(value, amount);
+    return totalReduction * 100;
+  }
+
+  calculateBoostValue(value?: number): number {
     if (!value) return 0;
     return (value - 1) * 100;
   }

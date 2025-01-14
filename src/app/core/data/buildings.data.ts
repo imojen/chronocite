@@ -38,10 +38,10 @@ export const BUILDINGS: { [key: string]: Building } = {
   time_compressor: {
     id: 'time_compressor',
     name: 'Compresseur Temporel',
-    description: 'Réduit la durée du tick de 5%',
-    baseCost: 750,
+    description: 'Réduit la durée du tick',
+    baseCost: 2000,
     baseProduction: 0,
-    unlockCost: 2500,
+    unlockCost: 3000,
     unlocked: false,
     requiredBuilding: 'accelerator',
     effect: {

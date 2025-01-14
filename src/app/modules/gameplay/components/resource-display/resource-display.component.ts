@@ -148,18 +148,66 @@ import { NumberFormatPipe } from '../../../../core/pipes/number-format.pipe';
       }
 
       .progress-track {
-        height: 4px;
+        height: 6px;
         background: rgba(13, 17, 23, 0.6);
-        border-radius: 2px;
+        border-radius: 3px;
         overflow: hidden;
         position: relative;
+        box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(79, 172, 254, 0.2);
       }
 
       .progress-fill {
         height: 100%;
-        background: linear-gradient(90deg, #4facfe, #00f2fe);
+        background: linear-gradient(
+          90deg,
+          #4facfe 0%,
+          #00f2fe 50%,
+          #4facfe 100%
+        );
         position: relative;
         transition: width 0s linear;
+        box-shadow: 0 0 15px rgba(79, 172, 254, 0.5);
+      }
+
+      .progress-fill::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(255, 255, 255, 0.2) 50%,
+          transparent 100%
+        );
+        animation: shine 2s linear infinite;
+      }
+
+      .progress-fill::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 20px;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(79, 172, 254, 0.8)
+        );
+        filter: blur(3px);
+      }
+
+      @keyframes shine {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
       }
 
       .glow {
@@ -176,13 +224,28 @@ import { NumberFormatPipe } from '../../../../core/pipes/number-format.pipe';
         filter: blur(2px);
       }
 
+      .tick-time {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #4facfe;
+        font-size: 0.9rem;
+        text-shadow: 0 0 10px rgba(79, 172, 254, 0.3);
+      }
+
+      .tick-time i {
+        color: #00f2fe;
+        filter: drop-shadow(0 0 5px rgba(0, 242, 254, 0.5));
+      }
+
       .boost {
         color: #00f2fe;
         font-size: 0.8em;
         padding: 0.2em 0.4em;
         background: rgba(0, 242, 254, 0.1);
         border-radius: 3px;
-        margin-left: 0.25rem;
+        border: 1px solid rgba(0, 242, 254, 0.2);
+        box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
       }
 
       @keyframes pulse {
