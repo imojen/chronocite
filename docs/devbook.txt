@@ -1,0 +1,126 @@
+# Dev Book : Chronocité - Phase de Développement
+
+## 1. Objectifs de Développement ✅
+- ✅ Construire un jeu idle/clicker jouable sur navigateur
+- ✅ Garantir une exécution fluide en utilisant Angular 19 et localStorage
+- ✅ Réduire au minimum les dépendances externes
+- 🟡 S'assurer que le jeu est robuste et facile à maintenir grâce à des tests systématiques
+
+## 2. Architecture du Projet
+
+### 2.1 Structure des Dossiers ✅
+- ✅ Structure de base avec composants standalone
+- ✅ Organisation modulaire des composants et services
+
+### 2.2 Modules Clés
+
+#### Core ✅
+- ✅ Services partagés (localStorage, game loop, pause/reprise)
+- ✅ Sauvegarde automatique
+- ✅ Gestion des améliorations
+- ✅ Gestion centralisée des états du jeu
+
+#### Composants
+1. **Gameplay** ✅
+   - ✅ Structure de base
+   - ✅ Génération de ressources
+   - ✅ Composants standalone
+   - ✅ Gestion des bâtiments
+   - ✅ Économie du jeu (équilibrage)
+
+2. **Upgrades** ✅
+   - ✅ Structure de base
+   - ✅ Système d'améliorations
+   - ✅ Modèle d'amélioration
+   - ✅ Gestion des effets
+   - ✅ Système de déblocage progressif
+
+3. **Cycles** ⭕
+   - ✅ Structure de base
+   - ⭕ Gestion des cycles
+   - ⭕ Mécanismes d'équilibrage
+
+4. **Interface Utilisateur (UI)** ✅
+   - ✅ Structure de base des composants
+   - ✅ Organisation des panneaux principaux
+   - ✅ Tableaux de ressources
+   - ✅ Indicateurs en temps réel
+   - ✅ Améliorations visuelles et UX
+
+## 3. Fonctionnalités Implémentées
+
+### 3.1 Mécaniques de Base ✅
+- ✅ Production automatique de ressources
+- ✅ Système de bâtiments avec coûts croissants
+- ✅ Multiplicateurs et bonus
+- ✅ Sauvegarde/chargement de partie
+
+### 3.2 Interface ✅
+- ✅ Affichage des ressources avec notation scientifique
+- ✅ Grille de bâtiments avec images
+- ✅ Menu de navigation
+- ✅ Système de notifications
+
+### 3.3 Améliorations ✅
+- ✅ Système d'achat d'améliorations
+- ✅ Effets variés (multiplicateurs, réductions de coût)
+- ✅ Conditions de déblocage
+- ✅ Arbre de progression
+
+## 4. Prochaines Étapes
+
+### 4.1 Priorités Immédiates
+1. ⭕ Implémentation des cycles
+2. ⭕ Ajout de plus de contenu (bâtiments, améliorations)
+3. ⭕ Système d'accomplissements
+4. ⭕ Plus d'effets visuels
+
+### 4.2 Améliorations Futures
+1. ⭕ Sons et musique
+2. ⭕ Localisation (multi-langue)
+3. ⭕ Système de prestige
+4. ⭕ Achievements
+
+## 5. Tests et Qualité 🟡
+- ✅ Tests unitaires de base
+- 🟡 Tests d'intégration
+- ⭕ Tests de performance
+- ⭕ Tests end-to-end
+
+## 6. Documentation 🟡
+- ✅ Documentation du code
+- 🟡 Guide de développement
+- ⭕ Documentation utilisateur
+
+---
+
+# Système de jeu
+
+## Ressources
+- Fragments de temps : ressource principale
+- Production de base : 0.1 fragments/s
+
+## Bâtiments
+- Générateur temporel : produit 1 fragment/s, coût initial 10
+- Accélérateur : produit 5 fragments/s, coût initial 50
+- Système de coût croissant : +15% par achat
+
+## Mécaniques
+- Production automatique toutes les secondes
+- Sauvegarde automatique toutes les minutes
+- Possibilité de réinitialiser la partie
+
+## Interface
+- Affichage des ressources
+- Liste des bâtiments avec :
+  - Nom et description
+  - Nombre possédé
+  - Production actuelle
+  - Coût d'achat
+
+## À implémenter
+- Système de cycles
+- Plus de bâtiments
+- Statistiques de jeu
+- Système d'accomplissements
+- Exportation/importation de sauvegardes  

@@ -1,0 +1,33 @@
+Titre : "Chronocité : La Recréation du Temps"
+Contexte
+Dans un univers fracturé, le "Flux Temporel" s'est effondré. En tant qu'architecte temporel, votre mission est de reconstruire et stabiliser les lignes du temps. Chaque cycle représente une boucle temporelle que vous relancez pour récupérer des "Fragments de Temps" (la ressource idle principale). Ces fragments permettent de construire des piliers temporels, améliorer vos lignes du temps et découvrir des époques oubliées.
+
+Mécanique de jeu
+Cycle de Base (Idle)
+
+Chaque cycle génère des "Fragments de Temps". Leur nombre augmente selon vos améliorations et constructions.
+Vous pouvez investir ces fragments pour reconstruire des structures temporelles comme :
+Chrono-Extracteurs : Augmentent la collecte de fragments.
+Portails d’Époques : Déverrouillent des ères spécifiques (Moyen Âge, Renaissance, Futur, etc.).
+Gardiennes Anachroniques : Autonomisent la gestion des ressources.
+Ressource Spéciale : Chronons
+
+À la fin de chaque cycle, vous obtenez des "Chronons" selon la qualité de votre ligne temporelle.
+Les Chronons permettent :
+D'améliorer les cycles suivants via des compétences comme :
+"Optimisation fractale" : Accélère la vitesse des cycles.
+"Divergences équilibrées" : Produit des fragments supplémentaires.
+"Résonance temporelle" : Booste vos portails et gardiennes.
+De découvrir des anomalies temporelles qui modifient la logique du jeu (par exemple, des univers alternatifs avec règles différentes).
+Évolution du Gameplay
+
+Chaque nouvelle époque débloquée ajoute des ressources secondaires, des défis, et une esthétique unique.
+Les anomalies débloquent des quêtes narratives ou des fonctionnalités spéciales : inverser le temps pour réinitialiser vos choix, introduire des cycles non linéaires, etc.
+Objectifs à Long Terme
+
+Stabiliser le "Flux Temporel Total" en atteignant une harmonie entre les différentes époques.
+Compléter des "Artifacts Éternels", objets mystérieux issus des ruines du temps.
+Univers et Accessibilité
+Univers : Mélange entre sci-fi rétrofuturiste et des inspirations historiques. Vous voyagez dans des réalités variées où les visuels et musiques reflètent des styles liés à chaque époque ou ligne temporelle.
+Accessibilité : Un gameplay simple avec une courbe de complexité croissante à travers des ajouts stratégiques légers mais engageants.
+Cela permet à la fois une exploration captivante et un jeu accessible mais satisfaisant pour les fans de jeux idle/clicker.
