@@ -11,11 +11,13 @@ import { GameService } from '../../../../core/services/game.service';
 import { GameState } from '../../../../core/models/game-state.model';
 import { Subscription } from 'rxjs';
 import { NumberFormatPipe } from '../../../../core/pipes/number-format.pipe';
+import { BUILDINGS } from '../../../../core/data/buildings.data';
+import { SkillTreeComponent } from '../skill-tree/skill-tree.component';
 
 @Component({
   selector: 'app-resource-display',
   standalone: true,
-  imports: [CommonModule, NumberFormatPipe],
+  imports: [CommonModule, NumberFormatPipe, SkillTreeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="resource-panel">
@@ -59,6 +61,55 @@ import { NumberFormatPipe } from '../../../../core/pipes/number-format.pipe';
           </div>
         </div>
       </div>
+
+      @if (resources.temporalKnowledge > 0 ||
+      hasBuildingUnlocked('temporal_echo_temple')) {
+      <div class="stats-section temporal-knowledge">
+        <div class="counter-section">
+          <span class="amount">
+            {{ resources.temporalKnowledge | number : '1.2-2' }}
+            @if (resources.temporalKnowledge >= 5) {
+            <span class="max-indicator">(Max)</span>
+            }
+          </span>
+          <div class="label">
+            <i class="fas fa-brain"></i>
+            <span>Savoir Temporel</span>
+          </div>
+          @if (resources.temporalKnowledge < 5) {
+          <div class="knowledge-progress">
+            <div class="progress-track">
+              <div
+                class="progress-fill"
+                [style.width.%]="getKnowledgeProgress()"
+              >
+                <div class="glow"></div>
+              </div>
+            </div>
+            <div class="time-estimate">
+              {{ getTimeToNextKnowledge() }}
+            </div>
+          </div>
+          }
+        </div>
+      </div>
+      } @if (resources.prestigePoints > 0) {
+      <div
+        class="prestige-points"
+        [title]="
+          'Vous avez ' +
+          resources.prestigePoints +
+          ' points de prestige non utilisés'
+        "
+        (click)="showSkillTree()"
+        style="cursor: pointer;"
+      >
+        <i class="fas fa-star"></i>
+        <span>{{ resources.prestigePoints | number : '1.0-0' }}</span>
+      </div>
+      } @if (isSkillTreeVisible) {
+      <app-skill-tree (closeModal)="hideSkillTree()" />
+      }
     </div>
   `,
   styles: [
@@ -263,11 +314,127 @@ import { NumberFormatPipe } from '../../../../core/pipes/number-format.pipe';
       .pulse {
         animation: pulse 2s infinite;
       }
+
+      .temporal-knowledge {
+        margin-top: 1rem;
+        background: rgba(147, 51, 234, 0.15);
+        border: 1px solid rgba(147, 51, 234, 0.3);
+        padding: 0.75rem;
+        border-radius: 6px;
+      }
+
+      .temporal-knowledge .counter-section {
+        text-align: center;
+      }
+
+      .temporal-knowledge .amount {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: #9333ea;
+        text-shadow: 0 0 15px rgba(147, 51, 234, 0.3);
+        display: block;
+        margin-bottom: 0.5rem;
+      }
+
+      .temporal-knowledge .label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        color: #c084fc;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .temporal-knowledge i {
+        color: #9333ea;
+        font-size: 1rem;
+        filter: drop-shadow(0 0 5px rgba(147, 51, 234, 0.5));
+      }
+
+      .temporal-knowledge .max-indicator {
+        font-size: 0.9rem;
+        color: #c084fc;
+        margin-left: 0.5rem;
+      }
+
+      .knowledge-progress {
+        width: 100%;
+        margin-top: 0.75rem;
+      }
+
+      .knowledge-progress .progress-track {
+        width: 100%;
+        height: 4px;
+        background: rgba(147, 51, 234, 0.2);
+        border-radius: 2px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .knowledge-progress .progress-fill {
+        height: 100%;
+        background: #9333ea;
+        position: relative;
+        transition: width 0.2s ease;
+      }
+
+      .knowledge-progress .glow {
+        position: absolute;
+        top: 0;
+        right: 0;
+        height: 100%;
+        width: 10px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.3)
+        );
+        filter: blur(2px);
+      }
+
+      .time-estimate {
+        font-size: 0.8rem;
+        color: #c084fc;
+        text-align: center;
+        margin-top: 0.25rem;
+        opacity: 0.8;
+      }
+
+      .prestige-points {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.9rem;
+        color: #4ade80;
+        text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+        font-family: 'Exo 2', sans-serif;
+        letter-spacing: 0.5px;
+        padding: 0.3rem 0.6rem;
+        background: rgba(74, 222, 128, 0.1);
+        border: 1px solid rgba(74, 222, 128, 0.2);
+        border-radius: 4px;
+        cursor: help;
+      }
+
+      .prestige-points i {
+        font-size: 0.8rem;
+        color: #4ade80;
+        filter: drop-shadow(0 0 5px rgba(74, 222, 128, 0.5));
+      }
     `,
   ],
 })
 export class ResourceDisplayComponent implements OnInit, OnDestroy {
-  resources: GameState['resources'] = { timeFragments: 0 };
+  resources: GameState['resources'] = {
+    timeFragments: 0,
+    temporalKnowledge: 0,
+    prestigePoints: 0,
+  };
   productionPerSecond = 0;
   productionPerTick = 0;
   tickRate = 0;
@@ -276,6 +443,7 @@ export class ResourceDisplayComponent implements OnInit, OnDestroy {
   private lastTick = Date.now();
   private animationFrame?: number;
   private tickRateSubscription?: Subscription;
+  isSkillTreeVisible = false;
 
   constructor(
     private gameService: GameService,
@@ -331,5 +499,64 @@ export class ResourceDisplayComponent implements OnInit, OnDestroy {
     if (this.animationFrame) {
       cancelAnimationFrame(this.animationFrame);
     }
+  }
+
+  hasBuildingUnlocked(buildingId: string): boolean {
+    return (
+      this.gameService.getBuildingDefinition(buildingId)?.unlocked || false
+    );
+  }
+
+  getTemporalKnowledgePerTick(): number {
+    const temple = BUILDINGS['temporal_echo_temple'];
+    const templeLevel = this.gameService.getBuildingAmount(
+      'temporal_echo_temple'
+    );
+    if (!temple || !templeLevel) return 0;
+
+    return temple.baseProduction * templeLevel;
+  }
+
+  getKnowledgeProgress(): number {
+    const currentKnowledge = this.resources.temporalKnowledge;
+    const currentLevel = Math.floor(currentKnowledge);
+    const progress = currentKnowledge - currentLevel;
+    return progress * 100;
+  }
+
+  getTimeToNextKnowledge(): string {
+    const currentKnowledge = this.resources.temporalKnowledge;
+    const currentLevel = Math.floor(currentKnowledge);
+    const progress = currentKnowledge - currentLevel;
+
+    // Calculer le temps restant
+    const temple = BUILDINGS['temporal_echo_temple'];
+    const templeLevel = this.gameService.getBuildingAmount(
+      'temporal_echo_temple'
+    );
+    if (!temple || !templeLevel) return '';
+
+    const multiplier = Math.pow(5, currentLevel);
+    const productionPerSecond =
+      (temple.baseProduction * templeLevel) / multiplier;
+    const remainingProgress = 1 - progress;
+    const secondsRemaining = remainingProgress / productionPerSecond;
+
+    // Formater le temps de manière simplifiée
+    if (secondsRemaining > 3600) {
+      return `${Math.ceil(secondsRemaining / 3600)}h`;
+    } else if (secondsRemaining > 60) {
+      return `${Math.ceil(secondsRemaining / 60)}m`;
+    } else {
+      return `${Math.ceil(secondsRemaining)}s`;
+    }
+  }
+
+  showSkillTree(): void {
+    this.isSkillTreeVisible = true;
+  }
+
+  hideSkillTree(): void {
+    this.isSkillTreeVisible = false;
   }
 }

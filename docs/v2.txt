@@ -1,0 +1,106 @@
+# **Skill Tree Devbook**
+
+## **1. Objectifs du Skill Tree**
+- Proposer une progression durable, persistante entre les cycles.
+- Offrir des choix stratégiques influençant les cycles futurs.
+- Introduire un design captivant et immersif, digne d’un univers Sci-Fi riche.
+- Encourager la spécialisation et des parcours variés selon les préférences du joueur.
+
+---
+
+## **2. Fonctionnalités Clés du Skill Tree**
+### **1. Progrès Cyclique**
+- Les points de savoir temporels sont obtenus exclusivement en utilisant la *Chronosphère* pour terminer un cycle.
+- Chaque compétence coûte un certain nombre de points de savoir.
+- Les branches du skill tree se débloquent de manière progressive.
+
+### **2. Branches Thématiques**
+Le skill tree est divisé en **trois branches principales** :
+1. **Chronos Production** : Axé sur l’augmentation de la production de ressources.
+2. **Gestion Économique** : Réduit les coûts et optimise la consommation de ressources.
+3. **Exploration et Découverte** : Débloque des mécaniques avancées et des opportunités uniques.
+
+### **3. Progression Non-Linéaire**
+- Des **nœuds clés** offrent des choix stratégiques : améliorer une seule capacité puissante ou débloquer plusieurs capacités moins fortes.
+
+---
+
+## **3. Design Visuel et Interface**
+
+### **Style Visuel**
+- **Thème Sci-Fi** :
+  - Interface holographique avec une esthétique futuriste.
+  - Effets lumineux "néon" : reflets bleu électrique, vert plasma et doré lumineux.
+  - Chaque compétence est représentée par un **icône 3D** (style MMO) basé sur des thèmes temporels (sabliers, fractales, vortex).
+  - Animation fluide pour déblocage : un éclair ou une onde énergétique se propage à partir du nœud sélectionné.
+
+### **Organisation Visuelle**
+- Présenté comme une **galaxie fractale** avec des branches colorées et émergeant d’un centre lumineux :
+  - **Bleu-argenté** pour Chronos Production.
+  - **Vert-émeraude** pour Gestion Économique.
+  - **Or scintillant** pour Exploration et Découverte.
+- **Effets dynamiques** :
+  - Points actifs vibrant légèrement avec des pulsations lumineuses.
+  - Branches verrouillées estompées avec un effet de transparence.
+
+### **UX et Ergonomie**
+- **Navigation Smooth** : Zoom fluide pour explorer des sections spécifiques.
+- **Feedback Actif** :
+  - Survol d’un nœud : affichage des détails de la compétence (effet immédiat et cumulatif).
+  - Points de savoir disponibles et dépensés affichés de façon intuitive.
+
+---
+
+## **4. Liste de Compétences**
+
+### **Branch 1 : Chronos Production (Bleu-Argenté)**
+1. **Fracture Temporelle** : Augmente la production globale de 10%.
+2. **Accélération Tachyonique** : Diminue la durée d'un tick de 5%.
+3. **Surcharge de Générateurs** : Les générateurs produisent 20% de fragments supplémentaires.
+4. **Fluctuations Stables** : Réduit les oscillations dans les ticks, stabilisant la production.
+5. **Flux Continu** : La production ne diminue jamais lorsqu’un bâtiment est amélioré.
+6. **Réverbérations Chroniques** : Une fraction des fragments produits est ajoutée au savoir temporel.
+7. **Collecte Dynamique** : Les bâtiments cliquables produisent également de façon passive.
+8. **Echo de Production** : Après un tick, 5% de la production est immédiatement reproduite.
+
+### **Branch 2 : Gestion Économique (Vert-Émeraude)**
+9. **Optimum Structurel** : Réduit les coûts de tous les bâtiments de 10%.
+10. **Matériaux Alternatifs** : Une partie des ressources dépensées est remboursée.
+11. **Recyclage Temporel** : Gagnez un point de savoir supplémentaire pour chaque 10 bâtiments vendus.
+12. **Compresseurs Optimisés** : Double l’effet des compresseurs temporels.
+13. **Ressources Souterraines** : Réduit la progression exponentielle des coûts.
+14. **Investissements Longs** : Permet de retarder le paiement des bâtiments en échange d’un malus temporaire.
+15. **Expertise Collaborative** : Baisse cumulative des coûts pour chaque compétence déjà débloquée.
+
+### **Branch 3 : Exploration et Découverte (Or Scintillant)**
+16. **Portails Temporaux** : Accès à de nouvelles mécaniques ou époques (comme des artefacts spéciaux).
+17. **Conscience Cosmique** : Débloque un affichage du rythme optimal pour les cycles.
+18. **Paradoxes Manipulés** : Augmente la rareté ou la puissance des événements aléatoires.
+19. **Vision Fractale** : Possibilité d’investir des points dans plusieurs branches simultanément.
+20. **Harmonie Dimensionnelle** : La production n’est plus impactée négativement par les événements.
+21. **Lignes de Flux Temporel** : Débloque une fonctionnalité de *reset doux* pour ajuster temporairement l'arbre de compétences.
+
+---
+
+## **5. Équilibrage et Tests**
+
+### **Objectif d’Équilibrage**
+- Assurer qu’aucune branche ou compétence ne soit trop puissante par rapport aux autres.
+- Veiller à ce que le coût des compétences progresse significativement (exponentiel ou quadratique) pour encourager une sélection réfléchie.
+
+### **Métriques**
+- **Cycle Moyen** : Temps moyen pour compléter un cycle en fonction des points de savoir.
+- **Diversité** : Analyse du pourcentage de joueurs qui choisissent différentes branches.
+- **Coût et ROI** : Retour sur investissement (gain en ressources/cycles).
+
+### **Types de Tests**
+1. **Tests Fonctionnels** :
+   - Vérifier les interactions et effets des compétences.
+2. **Tests d’Intégration** :
+   - Mesurer l’impact du skill tree sur la progression générale.
+3. **Playtests Utilisateurs** :
+   - Observer les choix des joueurs et leur ressenti quant aux mécaniques des compétences.
+
+---
+
+En appliquant ces principes et visuels, le **skill tree** devient un pilier clé de la progression dans le jeu, captivant les joueurs et valorisant leurs décisions stratégiques au fil des cycles.

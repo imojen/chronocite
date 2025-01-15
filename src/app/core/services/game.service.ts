@@ -1,5 +1,5 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { GameState } from '../models/game-state.model';
 import { Building } from '../models/building.model';
 import { BUILDINGS } from '../data/buildings.data';
@@ -16,29 +16,41 @@ export class GameService implements OnDestroy {
   private readonly COST_INCREASE_RATE = 1.12;
   private readonly SAVE_INTERVAL = 60000;
   private readonly SAVE_KEY = 'chronocity_save';
+  private readonly MAX_TEMPORAL_KNOWLEDGE = 5; // Maximum de savoir par cycle
 
-  private readonly INITIAL_STATE: GameState = {
+  private gameStateSubject = new BehaviorSubject<GameState>({
     resources: {
       timeFragments: 100,
+      temporalKnowledge: 0,
+      prestigePoints: 0,
     },
-    buildings: {},
+    buildings: {
+      generator: 1,
+    },
     upgrades: {},
+    skills: {},
+    multipliers: {
+      global: 1,
+      buildings: {},
+      costs: 1,
+      tickRate: 1,
+    },
     unlockedBuildings: {
       generator: true,
     },
     stats: {
       upgradesPurchased: 0,
+      cyclesCompleted: 0,
+      totalTemporalKnowledge: 0,
+      totalPrestigePoints: 0,
     },
     lastUpdate: Date.now(),
     totalPlayTime: 0,
     totalProduction: 0,
-  };
+  });
 
-  // Initialiser d'abord gameState
-  private gameState = new BehaviorSubject<GameState>(this.INITIAL_STATE);
-  readonly gameState$ = this.gameState.asObservable();
+  gameState$ = this.gameStateSubject.asObservable();
 
-  // Puis tickRateSubject avec le TICK_RATE initial
   private tickRateSubject = new BehaviorSubject<number>(this.TICK_RATE);
   readonly tickRate$ = this.tickRateSubject.asObservable();
 
@@ -47,7 +59,7 @@ export class GameService implements OnDestroy {
   constructor(private notificationService: NotificationService) {
     // Charger le jeu après l'initialisation complète
     const savedState = this.loadGame();
-    this.gameState.next(savedState);
+    this.gameStateSubject.next(savedState);
 
     // Mettre à jour le tick rate après le chargement
     this.tickRateSubject.next(this.getCurrentTickRate());
@@ -72,7 +84,7 @@ export class GameService implements OnDestroy {
 
   // Méthodes de sauvegarde
   saveGame(): void {
-    const state = this.gameState.value;
+    const state = this.gameStateSubject.value;
     try {
       localStorage.setItem(this.SAVE_KEY, JSON.stringify(state));
       this.notificationService.show('Jeu sauvegardé', 'success');
@@ -88,7 +100,7 @@ export class GameService implements OnDestroy {
   private loadGame(): GameState {
     try {
       const savedState = localStorage.getItem(this.SAVE_KEY);
-      if (!savedState) return this.INITIAL_STATE;
+      if (!savedState) return this.gameStateSubject.value;
 
       const parsedState = JSON.parse(savedState);
       parsedState.lastUpdate = Date.now();
@@ -99,7 +111,7 @@ export class GameService implements OnDestroy {
       return parsedState;
     } catch (error) {
       console.error('Erreur lors du chargement:', error);
-      return this.INITIAL_STATE;
+      return this.gameStateSubject.value;
     }
   }
 
@@ -118,7 +130,32 @@ export class GameService implements OnDestroy {
     });
 
     localStorage.removeItem(this.SAVE_KEY);
-    this.gameState.next(this.INITIAL_STATE);
+    this.gameStateSubject.next({
+      resources: {
+        timeFragments: 0,
+        temporalKnowledge: 0,
+        prestigePoints: 0,
+      },
+      buildings: {},
+      upgrades: {},
+      skills: {},
+      multipliers: {
+        global: 1,
+        buildings: {},
+        costs: 1,
+        tickRate: 1,
+      },
+      unlockedBuildings: {},
+      stats: {
+        upgradesPurchased: 0,
+        cyclesCompleted: 0,
+        totalTemporalKnowledge: 0,
+        totalPrestigePoints: 0,
+      },
+      lastUpdate: Date.now(),
+      totalPlayTime: 0,
+      totalProduction: 0,
+    });
   }
 
   // Méthodes publiques pour les bâtiments
@@ -135,8 +172,9 @@ export class GameService implements OnDestroy {
     const building = BUILDINGS[buildingId];
     if (!building) return Infinity;
 
-    const currentAmount = this.gameState.value.buildings[buildingId] || 0;
-    const effects = this.calculateEffects(this.gameState.value);
+    const currentAmount =
+      this.gameStateSubject.value.buildings[buildingId] || 0;
+    const effects = this.calculateEffects(this.gameStateSubject.value);
 
     // Calculer le coût avec l'augmentation progressive
     const cost =
@@ -151,13 +189,13 @@ export class GameService implements OnDestroy {
     const building = BUILDINGS[buildingId];
     if (!building || !building.unlocked) return false;
 
-    const state = this.gameState.value;
+    const state = this.gameStateSubject.value;
     const cost = this.getBuildingCost(buildingId);
     return state.resources.timeFragments >= cost;
   }
 
   purchaseBuilding(buildingId: string): boolean {
-    const state = { ...this.gameState.value };
+    const state = { ...this.gameStateSubject.value };
     const cost = this.getBuildingCost(buildingId);
 
     if (state.resources.timeFragments < cost) return false;
@@ -166,7 +204,7 @@ export class GameService implements OnDestroy {
     state.resources.timeFragments -= cost;
     state.buildings[buildingId] = (state.buildings[buildingId] || 0) + 1;
 
-    this.gameState.next(state);
+    this.gameStateSubject.next(state);
 
     // Si c'est un compresseur temporel, émettre le nouveau tick rate
     const building = BUILDINGS[buildingId];
@@ -178,12 +216,12 @@ export class GameService implements OnDestroy {
   }
 
   getBuildingAmount(buildingId: string): number {
-    return this.gameState.value.buildings[buildingId] || 0;
+    return this.gameStateSubject.value.buildings[buildingId] || 0;
   }
 
   // Nouvelles méthodes pour les améliorations
   getAvailableUpgrades(): Upgrade[] {
-    const state = this.gameState.value;
+    const state = this.gameStateSubject.value;
     const definitions = this.getUpgradeDefinitions();
 
     return Object.entries(definitions)
@@ -200,7 +238,7 @@ export class GameService implements OnDestroy {
     if (!upgrade || this.isUpgradePurchased(upgradeId)) return false;
 
     // Vérifier si on a assez de fragments de temps
-    if (this.gameState.value.resources.timeFragments < upgrade.cost) {
+    if (this.gameStateSubject.value.resources.timeFragments < upgrade.cost) {
       return false;
     }
 
@@ -230,7 +268,7 @@ export class GameService implements OnDestroy {
     if (!this.canPurchaseUpgrade(upgradeId)) return;
 
     const upgrade = this.getUpgradeDefinitions()[upgradeId];
-    const currentState = { ...this.gameState.value };
+    const currentState = { ...this.gameStateSubject.value };
 
     // Déduire le coût
     currentState.resources.timeFragments -= upgrade.cost;
@@ -248,7 +286,7 @@ export class GameService implements OnDestroy {
   // Méthodes privées après les méthodes publiques
   private startGameLoop(): void {
     this.stopGameLoop();
-    const effects = this.calculateEffects(this.gameState.value);
+    const effects = this.calculateEffects(this.gameStateSubject.value);
     const adjustedTickRate = Math.max(
       500,
       this.TICK_RATE * effects.tickRateMultiplier
@@ -264,18 +302,41 @@ export class GameService implements OnDestroy {
   }
 
   private update(): void {
-    const currentState = { ...this.gameState.value };
+    const currentState = { ...this.gameStateSubject.value };
     const now = Date.now();
     const delta = (now - currentState.lastUpdate) / 1000;
 
     currentState.totalPlayTime += delta;
     currentState.lastUpdate = now;
 
-    const productionPerSecond = this.calculateProduction(currentState);
-    const production = productionPerSecond * delta;
+    // Production de fragments de temps
+    const fragmentsProduction = this.calculateProduction(currentState);
+    const fragments = fragmentsProduction * delta;
+    currentState.resources.timeFragments += fragments;
+    currentState.totalProduction += fragments;
 
-    currentState.resources['timeFragments'] += production;
-    currentState.totalProduction += production;
+    // Production de savoir temporel avec progression exponentielle
+    const templeLevel = currentState.buildings['temporal_echo_temple'] || 0;
+    if (
+      templeLevel > 0 &&
+      currentState.resources.temporalKnowledge < this.MAX_TEMPORAL_KNOWLEDGE
+    ) {
+      const temple = BUILDINGS['temporal_echo_temple'];
+      const currentKnowledge = Math.floor(
+        currentState.resources.temporalKnowledge
+      );
+      const multiplier = Math.pow(5, currentKnowledge); // Chaque point est 5x plus long
+      const knowledgeProduction =
+        (temple.baseProduction * templeLevel) / multiplier;
+
+      // Vérifier si on ne dépasse pas la limite
+      const newKnowledge =
+        currentState.resources.temporalKnowledge + knowledgeProduction * delta;
+      currentState.resources.temporalKnowledge = Math.min(
+        newKnowledge,
+        this.MAX_TEMPORAL_KNOWLEDGE
+      );
+    }
 
     this.updateState(currentState);
   }
@@ -297,7 +358,7 @@ export class GameService implements OnDestroy {
   }
 
   private updateState(newState: GameState): void {
-    this.gameState.next({ ...newState });
+    this.gameStateSubject.next(newState);
   }
 
   private readonly UPGRADE_DEFINITIONS: { [key: string]: Upgrade } = {
@@ -480,8 +541,10 @@ export class GameService implements OnDestroy {
   }
 
   getCurrentProduction(): number {
-    const effects = this.calculateEffects(this.gameState.value);
-    const baseProduction = this.calculateProduction(this.gameState.value);
+    const effects = this.calculateEffects(this.gameStateSubject.value);
+    const baseProduction = this.calculateProduction(
+      this.gameStateSubject.value
+    );
     // Convertir la production par tick en production par seconde
     return (
       ((baseProduction * 1000) / this.getCurrentTickRate()) *
@@ -490,13 +553,15 @@ export class GameService implements OnDestroy {
   }
 
   getProductionPerTick(): number {
-    const effects = this.calculateEffects(this.gameState.value);
-    const baseProduction = this.calculateProduction(this.gameState.value);
+    const effects = this.calculateEffects(this.gameStateSubject.value);
+    const baseProduction = this.calculateProduction(
+      this.gameStateSubject.value
+    );
     return baseProduction * effects.resourceMultiplier;
   }
 
   getLastUpdate(): number {
-    return this.gameState.value.lastUpdate;
+    return this.gameStateSubject.value.lastUpdate;
   }
 
   private calculateEffects(state: GameState) {
@@ -561,7 +626,7 @@ export class GameService implements OnDestroy {
 
   // Ajouter une méthode pour obtenir le tick rate actuel
   getCurrentTickRate(): number {
-    const effects = this.calculateEffects(this.gameState.value);
+    const effects = this.calculateEffects(this.gameStateSubject.value);
     return Math.max(1000, this.TICK_RATE * effects.tickRateMultiplier);
   }
 
@@ -572,7 +637,7 @@ export class GameService implements OnDestroy {
 
     // Si c'est un compresseur temporel, vérifier si la limite est atteinte
     if (building.effect?.type === 'tick_rate') {
-      const effects = this.calculateEffects(this.gameState.value);
+      const effects = this.calculateEffects(this.gameStateSubject.value);
       const currentTickRate = this.TICK_RATE * effects.tickRateMultiplier;
       // Empêcher l'achat si le tick rate est <= 1000ms (1 seconde)
       return currentTickRate > 1000;
@@ -582,11 +647,11 @@ export class GameService implements OnDestroy {
   }
 
   getCurrentEffects() {
-    return this.calculateEffects(this.gameState.value);
+    return this.calculateEffects(this.gameStateSubject.value);
   }
 
   private isUpgradePurchased(upgradeId: string): boolean {
-    return !!this.gameState.value.upgrades[upgradeId];
+    return !!this.gameStateSubject.value.upgrades[upgradeId];
   }
 
   getBuildingDefinition(buildingId: string): Building {
@@ -594,13 +659,7 @@ export class GameService implements OnDestroy {
   }
 
   getResources$() {
-    return this.gameState$.pipe(
-      map((state) => ({
-        name: 'Fragments de temps',
-        amount: Math.floor(state.resources.timeFragments * 100) / 100,
-        perTick: this.getProductionPerTick(),
-      }))
-    );
+    return this.gameState$.pipe(map((state) => state.resources));
   }
 
   getAllBuildings$() {
@@ -644,13 +703,13 @@ export class GameService implements OnDestroy {
 
   getTotalPlayTime(): number {
     return (
-      this.gameState.value.totalPlayTime +
-      (Date.now() - this.gameState.value.lastUpdate)
+      this.gameStateSubject.value.totalPlayTime +
+      (Date.now() - this.gameStateSubject.value.lastUpdate)
     );
   }
 
   purchaseMaxBuilding(buildingId: string): void {
-    let currentState = { ...this.gameState.value };
+    let currentState = { ...this.gameStateSubject.value };
     let resources = currentState.resources.timeFragments;
     let purchased = 0;
 
@@ -692,19 +751,20 @@ export class GameService implements OnDestroy {
       const requiredBuilding = BUILDINGS[building.requiredBuilding];
       if (
         !requiredBuilding.unlocked ||
-        !this.gameState.value.buildings[building.requiredBuilding]
+        !this.gameStateSubject.value.buildings[building.requiredBuilding]
       ) {
         return false;
       }
     }
 
     return (
-      this.gameState.value.resources.timeFragments >= (building.unlockCost || 0)
+      this.gameStateSubject.value.resources.timeFragments >=
+      (building.unlockCost || 0)
     );
   }
 
   unlockBuilding(buildingId: string): boolean {
-    const state = { ...this.gameState.value };
+    const state = { ...this.gameStateSubject.value };
     const building = BUILDINGS[buildingId];
 
     if (!building || building.unlocked || !this.canUnlockBuilding(buildingId)) {
@@ -727,7 +787,7 @@ export class GameService implements OnDestroy {
     state.unlockedBuildings[buildingId] = true;
 
     // Mettre à jour l'état global
-    this.gameState.next({
+    this.gameStateSubject.next({
       ...state,
       buildings: {
         ...state.buildings,
@@ -757,7 +817,7 @@ export class GameService implements OnDestroy {
   }
 
   mineTimeFragment(): void {
-    const state = { ...this.gameState.value };
+    const state = { ...this.gameStateSubject.value };
     const timeMiner = BUILDINGS['time_miner'];
 
     if (!timeMiner.unlocked) return;
@@ -774,6 +834,143 @@ export class GameService implements OnDestroy {
     state.resources.timeFragments += clickValue;
 
     // Mettre à jour l'état
-    this.gameState.next(state);
+    this.gameStateSubject.next(state);
+  }
+
+  // Ajouter une méthode pour gérer le reset du cycle
+  resetCycle(): void {
+    const currentState = this.gameStateSubject.value;
+    const temporalKnowledge = currentState.resources.temporalKnowledge;
+    // Arrondir le savoir temporel à l'entier supérieur et calculer les points
+    const prestigePoints = Math.ceil(temporalKnowledge);
+
+    // Sauvegarder les statistiques
+    const stats = {
+      ...currentState.stats,
+      cyclesCompleted: currentState.stats.cyclesCompleted + 1,
+      totalTemporalKnowledge:
+        currentState.stats.totalTemporalKnowledge + temporalKnowledge,
+      totalPrestigePoints:
+        currentState.stats.totalPrestigePoints + prestigePoints,
+    };
+
+    // Créer le nouvel état en repartant de zéro
+    const newState: GameState = {
+      resources: {
+        timeFragments: 0,
+        temporalKnowledge: 0,
+        prestigePoints: currentState.resources.prestigePoints + prestigePoints,
+      },
+      buildings: {
+        generator: 1, // Le générateur reste au niveau 1
+      },
+      upgrades: {},
+      skills: currentState.skills, // Garder les compétences débloquées
+      multipliers: {
+        global: 1,
+        buildings: {},
+        costs: 1,
+        tickRate: 1,
+      },
+      unlockedBuildings: {
+        generator: true, // Le générateur reste débloqué
+      },
+      stats,
+      lastUpdate: Date.now(),
+      totalPlayTime: currentState.totalPlayTime,
+      totalProduction: 0,
+    };
+
+    // Réinitialiser tous les bâtiments dans BUILDINGS
+    Object.keys(BUILDINGS).forEach((buildingId) => {
+      if (buildingId !== 'generator') {
+        BUILDINGS[buildingId] = {
+          ...BUILDINGS[buildingId],
+          unlocked: false,
+        };
+      }
+    });
+
+    this.gameStateSubject.next(newState);
+    this.saveGame(); // Sauvegarder immédiatement après le reset
+    this.notificationService.show(
+      `Cycle terminé ! +${prestigePoints} points de prestige`,
+      'success'
+    );
+  }
+
+  getGameState(): GameState {
+    return this.gameStateSubject.value;
+  }
+
+  spendPrestigePoints(amount: number): void {
+    const currentState = this.gameStateSubject.value;
+    if (currentState.resources.prestigePoints >= amount) {
+      this.updateGameState({
+        ...currentState,
+        resources: {
+          ...currentState.resources,
+          prestigePoints: currentState.resources.prestigePoints - amount,
+        },
+      });
+    }
+  }
+
+  addBuildingMultiplier(buildingId: string, value: number): void {
+    const currentState = this.gameStateSubject.value;
+    this.updateGameState({
+      ...currentState,
+      multipliers: {
+        ...currentState.multipliers,
+        buildings: {
+          ...currentState.multipliers.buildings,
+          [buildingId]:
+            (currentState.multipliers.buildings[buildingId] || 1) * (1 + value),
+        },
+      },
+    });
+  }
+
+  addGlobalMultiplier(value: number): void {
+    const currentState = this.gameStateSubject.value;
+    this.updateGameState({
+      ...currentState,
+      multipliers: {
+        ...currentState.multipliers,
+        global: currentState.multipliers.global * (1 + value),
+      },
+    });
+  }
+
+  addCostMultiplier(value: number): void {
+    const currentState = this.gameStateSubject.value;
+    this.updateGameState({
+      ...currentState,
+      multipliers: {
+        ...currentState.multipliers,
+        costs: currentState.multipliers.costs * (1 - value),
+      },
+    });
+  }
+
+  addTickRateMultiplier(value: number): void {
+    const currentState = this.gameStateSubject.value;
+    this.updateGameState({
+      ...currentState,
+      multipliers: {
+        ...currentState.multipliers,
+        tickRate: currentState.multipliers.tickRate * (1 - value),
+      },
+    });
+  }
+
+  private updateGameState(newState: GameState): void {
+    this.gameStateSubject.next(newState);
+  }
+
+  getPrestigePoints$(): Observable<number> {
+    return this.gameState$.pipe(
+      map((state) => state.resources.prestigePoints ?? 0)
+    );
   }
 }

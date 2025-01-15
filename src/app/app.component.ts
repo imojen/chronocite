@@ -7,6 +7,7 @@ import { NotificationsComponent } from './core/components/notifications/notifica
 import { GameService } from './core/services/game.service';
 import { Resource } from './core/models/resource.model';
 import { Observable } from 'rxjs';
+import { ConfirmationDialogComponent } from './shared/components/confirmation-dialog/confirmation-dialog.component';
 
 @Component({
   selector: 'app-root',
@@ -18,11 +19,18 @@ import { Observable } from 'rxjs';
     GameMenuComponent,
     ResourceDisplayComponent,
     NotificationsComponent,
+    ConfirmationDialogComponent,
   ],
   template: `
     <div class="app-layout">
       <aside class="side-panel">
-        <h1>ChronoCity</h1>
+        <div class="logo-container">
+          <img
+            src="assets/images/logo.png"
+            alt="Chronocity"
+            class="game-logo"
+          />
+        </div>
         <app-resource-display></app-resource-display>
         <app-game-menu></app-game-menu>
       </aside>
@@ -31,6 +39,7 @@ import { Observable } from 'rxjs';
       </main>
     </div>
     <app-notifications></app-notifications>
+    <app-confirmation-dialog></app-confirmation-dialog>
   `,
   styles: [
     `
@@ -60,6 +69,23 @@ import { Observable } from 'rxjs';
       .main-content {
         padding: 1rem;
         overflow-y: auto;
+      }
+
+      .logo-container {
+        padding: 0;
+        text-align: center;
+      }
+
+      .game-logo {
+        max-width: 200px;
+        height: auto;
+        filter: drop-shadow(0 0 10px rgba(79, 172, 254, 0.3));
+        transition: filter 0.3s ease;
+        max-height: 150px;
+      }
+
+      .game-logo:hover {
+        filter: drop-shadow(0 0 15px rgba(79, 172, 254, 0.5));
       }
     `,
   ],

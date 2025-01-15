@@ -11,35 +11,9 @@ import { Observable } from 'rxjs';
   imports: [CommonModule, RouterModule],
   template: `
     <nav class="menu">
-      <div class="menu-items">
-        <a class="menu-item" routerLink="/buildings" routerLinkActive="active">
-          <i class="fas fa-building"></i>
-          Bâtiments
-        </a>
-        <a class="menu-item" routerLink="/upgrades" routerLinkActive="active">
-          <i class="fas fa-arrow-up"></i>
-          Améliorations
-          <span class="badge" *ngIf="availableUpgrades$ | async as count">
-            {{ count }}
-          </span>
-        </a>
-        <a class="menu-item" routerLink="/stats" routerLinkActive="active">
-          <i class="fas fa-chart-bar"></i>
-          Statistiques
-        </a>
-        <a class="menu-item" routerLink="/effects" routerLinkActive="active">
-          <i class="fas fa-magic"></i>
-          Effets
-        </a>
-      </div>
-
       <div class="menu-actions">
-        <button class="action-button" (click)="saveGame()">
-          <i class="fas fa-save"></i>
-          Sauvegarder
-        </button>
+        <button class="action-button" (click)="saveGame()">Sauvegarder</button>
         <button class="action-button warning" (click)="resetGame()">
-          <i class="fas fa-trash"></i>
           Réinitialiser
         </button>
       </div>
@@ -102,36 +76,37 @@ import { Observable } from 'rxjs';
 
       .menu-actions {
         display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        padding: 1rem 0;
+        flex-direction: row;
+        justify-content: center;
+        gap: 1.5rem;
+        padding: 0.4rem 0;
         border-top: 1px solid rgba(255, 255, 255, 0.1);
       }
 
       .action-button {
         display: flex;
         align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        padding: 0.75rem;
+        gap: 0.3rem;
+        padding: 0.3rem;
         border: none;
-        border-radius: 4px;
-        background: #4facfe;
-        color: white;
+        background: transparent;
+        color: rgba(79, 172, 254, 0.5);
         cursor: pointer;
-        transition: background-color 0.2s;
+        transition: all 0.2s;
+        font-size: 0.75rem;
       }
 
       .action-button:hover {
-        background: #2196f3;
+        color: #4facfe;
       }
 
       .action-button.warning {
-        background: #f44336;
+        background: transparent;
+        color: rgba(244, 67, 54, 0.6);
       }
 
       .action-button.warning:hover {
-        background: #d32f2f;
+        color: #f44336;
       }
     `,
   ],

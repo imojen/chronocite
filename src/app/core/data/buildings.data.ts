@@ -6,7 +6,7 @@ export const BUILDINGS: { [key: string]: Building } = {
     name: 'Générateur temporel',
     description: 'Génère des fragments de temps par seconde',
     baseCost: 15,
-    baseProduction: 0.5,
+    baseProduction: 100.5,
     unlocked: true,
     imageIndex: 1,
   },
@@ -21,7 +21,7 @@ export const BUILDINGS: { [key: string]: Building } = {
     requiredBuilding: 'generator',
     imageIndex: 8,
     isClickable: true,
-    clickValue: 1,
+    clickValue: 10000,
     clickIncrease: 0.25,
   },
   accelerator: {
@@ -110,5 +110,38 @@ export const BUILDINGS: { [key: string]: Building } = {
       value: 1.1,
     },
     imageIndex: 7,
+  },
+  temporal_echo_temple: {
+    id: 'temporal_echo_temple',
+    name: 'Temple des Échos',
+    description:
+      'Produit lentement du savoir temporel qui sera converti en points de prestige lors du reset',
+    baseCost: 50000,
+    baseProduction: 0.001, // Production très faible de savoir par tick
+    unlockCost: 50000,
+    unlocked: false,
+    requiredBuilding: 'temporal_conduit',
+    effect: {
+      type: 'resource_production',
+      value: 1,
+      target: 'temporalKnowledge',
+    },
+    imageIndex: 9,
+  },
+  chronosphere: {
+    id: 'chronosphere',
+    name: 'Chronosphère',
+    description: 'Reset le cycle et convertit le savoir temporel',
+    baseCost: 1000000,
+    baseProduction: 0,
+    unlockCost: 100000,
+    unlocked: false,
+    requiredBuilding: 'temporal_echo_temple',
+    effect: {
+      type: 'cycle_reset',
+      value: 1,
+    },
+    maxLevel: 1, // Un seul niveau possible
+    imageIndex: 10,
   },
 };

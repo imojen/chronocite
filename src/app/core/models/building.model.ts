@@ -7,12 +7,15 @@ export interface Building {
   unlockCost?: number;
   unlocked?: boolean;
   requiredBuilding?: string;
+  maxLevel?: number;
   effect?: {
     type:
       | 'tick_rate'
       | 'cost_reduction'
       | 'production_boost'
-      | 'resource_multiplier';
+      | 'resource_multiplier'
+      | 'resource_production'
+      | 'cycle_reset';
     value: number;
     target?: string;
   };

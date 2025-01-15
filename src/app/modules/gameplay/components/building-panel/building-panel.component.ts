@@ -9,9 +9,10 @@ import { CommonModule } from '@angular/common';
 import { GameService } from '../../../../core/services/game.service';
 import { Observable } from 'rxjs';
 import { Building } from '../../../../core/models/building.model';
-import { NumberFormatPipe } from '../../../../core/pipes/number-format.pipe';
-import { Resource } from '../../../../core/models/resource.model';
 import { BUILDINGS } from '../../../../core/data/buildings.data';
+import { GameState } from '../../../../core/models/game-state.model';
+import { map } from 'rxjs/operators';
+import { DialogService } from '../../../../core/services/dialog.service';
 
 interface BuildingWithProduction extends Building {
   amount: number;
@@ -21,7 +22,7 @@ interface BuildingWithProduction extends Building {
 @Component({
   selector: 'app-building-panel',
   standalone: true,
-  imports: [CommonModule, NumberFormatPipe],
+  imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="buildings-grid">
@@ -34,7 +35,7 @@ interface BuildingWithProduction extends Building {
         <div class="card-header">
           <div class="name-row">
             <h3>{{ building.name }}</h3>
-            <div class="level-badge">
+            <div class="level-badge" *ngIf="building.id !== 'chronosphere'">
               <div class="level-ring"></div>
               <span class="level-text">Niv. {{ building.amount }}</span>
             </div>
@@ -42,10 +43,9 @@ interface BuildingWithProduction extends Building {
         </div>
         <div class="card-image">
           <img
-            [src]="
-              'assets/images/' + getBuildingImageNumber(building.id) + '.webp'
-            "
+            [src]="'assets/images/' + building.imageIndex + '.webp'"
             [alt]="building.name"
+            loading="lazy"
           />
         </div>
         <div class="description-area">
@@ -71,7 +71,7 @@ interface BuildingWithProduction extends Building {
           </button>
           }
         </div>
-        <div class="stats-container">
+        <div class="stats-container" *ngIf="building.id !== 'chronosphere'">
           <div class="stat-item">
             @if (building.isClickable) {
             <div class="stat-label">Fragments de temps par minage</div>
@@ -90,7 +90,8 @@ interface BuildingWithProduction extends Building {
             <div class="stat-label">Réduction des coûts</div>
             <div class="stat-value">
               -{{
-                calculateEffectValue(building.effect?.value) | number : '1.1-1'
+                calculateEffectValue(building.effect?.value, building)
+                  | number : '1.1-1'
               }}%
             </div>
             } @else if (building.effect?.type === 'production_boost') { @if
@@ -111,6 +112,13 @@ interface BuildingWithProduction extends Building {
             <div class="stat-value">
               ×{{ building.effect?.value || 1 | number : '1.1-1' }}
             </div>
+            } @else if (building.effect?.type === 'resource_production') {
+            <div class="stat-label">Production de savoir</div>
+            <div class="stat-value">
+              +{{
+                building.baseProduction * building.amount | number : '1.3-3'
+              }}/tick
+            </div>
             } @else {
             <div class="stat-label">Production</div>
             <div class="stat-value">
@@ -121,6 +129,17 @@ interface BuildingWithProduction extends Building {
         </div>
         <div class="card-footer">
           <div class="action-buttons">
+            @if (building.id === 'chronosphere') {
+            <button
+              class="buy-button activate-button"
+              [class.disabled]="!building.unlocked"
+              (click)="activateChronosphere()"
+            >
+              <div class="button-frame">
+                <span>Activation</span>
+              </div>
+            </button>
+            } @else {
             <button
               class="upgrade-button"
               [disabled]="!canPurchase(building.id)"
@@ -133,6 +152,7 @@ interface BuildingWithProduction extends Building {
             <button class="max-button" (click)="purchaseMax(building.id)">
               Max
             </button>
+            }
           </div>
         </div>
 
@@ -931,11 +951,28 @@ interface BuildingWithProduction extends Building {
         font-weight: 500;
         font-size: 0.9rem;
       }
+
+      .activate-button {
+        background: rgba(220, 38, 38, 0.1) !important;
+        color: #ef4444 !important;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        height: 104px;
+      }
+
+      .activate-button:hover:not(.disabled) {
+        background: rgba(220, 38, 38, 0.2) !important;
+      }
+
+      .activate-button .button-frame {
+        padding: 1rem;
+      }
     `,
   ],
 })
 export class BuildingPanelComponent {
-  resources$: Observable<Resource>;
+  resources$: Observable<GameState['resources']>;
   buildings$: Observable<BuildingWithProduction[]>;
   selectedBuilding: Building | null = null;
   purchaseEffects: { [key: string]: boolean } = {};
@@ -958,9 +995,12 @@ export class BuildingPanelComponent {
   constructor(
     private gameService: GameService,
     private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
+    private ngZone: NgZone,
+    private dialogService: DialogService
   ) {
-    this.resources$ = this.gameService.getResources$();
+    this.resources$ = this.gameService.gameState$.pipe(
+      map((state) => state.resources)
+    );
     this.buildings$ = this.gameService.getAllBuildings$();
   }
 
@@ -1070,15 +1110,41 @@ export class BuildingPanelComponent {
 
   calculateEffectValue(value?: number, building?: Building): number {
     if (!value || !building) return 0;
+
     const amount = this.gameService.getBuildingAmount(building.id);
 
-    // L'effet est cumulatif, donc on applique (1 - 0.95) = 5% autant de fois qu'on a de niveaux
-    const totalReduction = 1 - Math.pow(value, amount);
-    return totalReduction * 100;
+    switch (building.effect?.type) {
+      case 'tick_rate':
+      case 'cost_reduction':
+        const totalReduction = 1 - Math.pow(value, amount);
+        return Math.round(totalReduction * 10000) / 100;
+
+      default:
+        return (value - 1) * 100;
+    }
   }
 
   calculateBoostValue(value?: number): number {
     if (!value) return 0;
     return (value - 1) * 100;
+  }
+
+  async activateChronosphere(): Promise<void> {
+    if (!BUILDINGS['chronosphere'].unlocked) return;
+
+    const confirmed = await this.dialogService.confirm({
+      title: 'Confirmer le Reset',
+      message:
+        'Activer la Chronosphère réinitialisera votre cycle actuel. ' +
+        'Votre savoir temporel sera converti en points de prestige. ' +
+        'Êtes-vous sûr de vouloir continuer ?',
+      confirmText: 'Activer',
+      cancelText: 'Annuler',
+      type: 'warning',
+    });
+
+    if (confirmed) {
+      this.gameService.resetCycle();
+    }
   }
 }
