@@ -15,7 +15,7 @@ import { Observable } from 'rxjs';
 @Component({
   selector: 'app-skill-tree',
   standalone: true,
-  imports: [CommonModule, NumberFormatPipe],
+  imports: [CommonModule],
   template: `
     <div class="overlay" (click)="close($event)">
       <div class="modal-container">
@@ -64,6 +64,11 @@ import { Observable } from 'rxjs';
                   >
                     <i class="fas fa-{{ skill.icon }}"></i>
                   </div>
+                  @if (skill.purchased) {
+                  <div class="skill-check">
+                    <i class="fas fa-check"></i>
+                  </div>
+                  }
                   <div class="skill-tooltip">
                     <div class="tooltip-header">
                       <h4>{{ skill.name }}</h4>
@@ -253,6 +258,8 @@ import { Observable } from 'rxjs';
         opacity: 0.5;
         transition: all 0.3s ease;
         filter: grayscale(1) brightness(0.3);
+        position: relative;
+        z-index: 100;
       }
 
       .skill-node:hover {
@@ -567,7 +574,7 @@ import { Observable } from 'rxjs';
         pointer-events: none;
         opacity: 0;
         transition: opacity 0.2s ease;
-        z-index: 101;
+        z-index: 1001;
         visibility: hidden;
       }
 
@@ -739,6 +746,55 @@ import { Observable } from 'rxjs';
 
       .skill-icon.pulse {
         animation: pulse 2s infinite;
+      }
+
+      .node-connections .fa-check {
+        position: absolute;
+        right: -8px;
+        bottom: -8px;
+        color: #4eff4e;
+        background: rgba(0, 0, 0, 0.9);
+        border: 2px solid #4eff4e;
+        border-radius: 50%;
+        padding: 4px;
+        font-size: 0.9rem;
+        z-index: 10;
+        box-shadow: 0 0 10px #4eff4e, inset 0 0 5px #4eff4e;
+        animation: tickerGlow 2s infinite ease-in-out;
+      }
+
+      @keyframes tickerGlow {
+        0% {
+          box-shadow: 0 0 10px #4eff4e, inset 0 0 5px #4eff4e;
+        }
+        50% {
+          box-shadow: 0 0 15px #4eff4e, inset 0 0 8px #4eff4e;
+        }
+        100% {
+          box-shadow: 0 0 10px #4eff4e, inset 0 0 5px #4eff4e;
+        }
+      }
+
+      .skill-check {
+        position: absolute;
+        right: -8px;
+        bottom: -4px;
+        color: #4eff4e;
+        background: rgba(0, 0, 0, 0.9);
+        border: 2px solid #4eff4e;
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 200;
+        box-shadow: 0 0 10px #4eff4e, inset 0 0 5px #4eff4e;
+        animation: tickerGlow 2s infinite ease-in-out;
+      }
+
+      .skill-check i {
+        font-size: 1rem;
       }
     `,
   ],

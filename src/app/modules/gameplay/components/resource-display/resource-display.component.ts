@@ -34,20 +34,22 @@ import { SkillTreeComponent } from '../skill-tree/skill-tree.component';
       </div>
 
       <div class="stats-section">
-        <div class="stat-item">
+        <div class="stat-row">
           <div class="stat-value">
             <i class="fas fa-industry"></i>
             <span>+{{ productionPerTick | number : '1.1-1' }}/tick</span>
           </div>
         </div>
 
-        <div class="stat-item">
+        <div class="stat-row">
           <div class="stat-value">
             <i class="fas fa-bolt"></i>
             <span>{{ tickRate / 1000 | number : '1.1-1' }}s</span>
-            @if (tickRate < 1000) {
+            @if (tickRate <= 500) {
+            <span class="boost max">MAX</span>
+            } @else if (tickRate < 2000) {
             <span class="boost"
-              >-{{ 100 - (tickRate / 1000) * 100 | number : '1.0-0' }}%</span
+              >-{{ 100 - (tickRate / 2000) * 100 | number : '1.0-0' }}%</span
             >
             }
           </div>
@@ -93,7 +95,43 @@ import { SkillTreeComponent } from '../skill-tree/skill-tree.component';
           }
         </div>
       </div>
-      } @if (resources.prestigePoints > 0) {
+      } @if (hasTemporalInsight()) {
+      <div class="stats-section temporal-insight">
+        <div class="insight-grid">
+          <div class="insight-item" title="Production par seconde">
+            <i class="fas fa-chart-line"></i>
+            <div class="insight-content">
+              <div class="insight-label">Production</div>
+              <div class="insight-value">
+                {{ productionPerTick * (1000 / tickRate) | number : '1.1-1' }}/s
+              </div>
+            </div>
+          </div>
+          <div class="insight-item" title="Gain par minute">
+            <i class="fas fa-arrow-trend-up"></i>
+            <div class="insight-content">
+              <div class="insight-label">Gain/min</div>
+              <div class="insight-value">
+                {{ getGainPerMinute() | number : '1.1-1' }}
+              </div>
+            </div>
+          </div>
+
+          @if (getActiveBoosts().length > 0) {
+          <div class="insight-separator"></div>
+          @for (boost of getActiveBoosts(); track boost.label) {
+          <div class="insight-item" [title]="'Bonus actif: ' + boost.label">
+            <i class="fas fa-star-half-alt"></i>
+            <div class="insight-content">
+              <div class="insight-label">{{ boost.label }}</div>
+              <div class="insight-value">{{ boost.value }}</div>
+            </div>
+          </div>
+          } }
+        </div>
+      </div>
+      }
+
       <div
         class="prestige-points"
         [title]="
@@ -107,7 +145,7 @@ import { SkillTreeComponent } from '../skill-tree/skill-tree.component';
         <i class="fas fa-star"></i>
         <span>{{ resources.prestigePoints | number : '1.0-0' }}</span>
       </div>
-      } @if (isSkillTreeVisible) {
+      @if (isSkillTreeVisible) {
       <app-skill-tree (closeModal)="hideSkillTree()" />
       }
     </div>
@@ -170,15 +208,17 @@ import { SkillTreeComponent } from '../skill-tree/skill-tree.component';
 
       .stats-section {
         display: flex;
-        justify-content: space-around;
+        flex-direction: column;
+        gap: 0.5rem;
         padding: 0.75rem;
         background: rgba(13, 17, 23, 0.4);
         border-radius: 6px;
         border: 1px solid rgba(79, 172, 254, 0.2);
       }
 
-      .stat-item {
-        text-align: center;
+      .stat-row {
+        display: flex;
+        justify-content: center;
       }
 
       .stat-value {
@@ -426,6 +466,77 @@ import { SkillTreeComponent } from '../skill-tree/skill-tree.component';
         color: #4ade80;
         filter: drop-shadow(0 0 5px rgba(74, 222, 128, 0.5));
       }
+
+      .temporal-insight {
+        background: rgba(13, 17, 23, 0.8) !important;
+        border: 1px solid rgba(255, 215, 0, 0.2) !important;
+        padding: 0.4rem !important;
+        margin: 0;
+      }
+
+      .insight-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        width: 100%;
+      }
+
+      .insight-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.75rem;
+        color: #ffd700;
+        background: rgba(255, 215, 0, 0.05);
+        padding: 0.25rem 0.5rem;
+        border-radius: 3px;
+        border: 1px solid rgba(255, 215, 0, 0.1);
+      }
+
+      .insight-item i {
+        font-size: 0.7rem;
+        opacity: 0.7;
+        color: #ffd700;
+        width: 12px;
+      }
+
+      .insight-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex: 1;
+      }
+
+      .insight-label {
+        font-size: 0.75rem;
+        opacity: 0.8;
+        color: #ffd700;
+      }
+
+      .insight-value {
+        font-size: 0.75rem;
+        color: #ffd700;
+        font-family: 'Exo 2', sans-serif;
+        letter-spacing: 0.2px;
+      }
+
+      .insight-separator {
+        height: 1px;
+        background: rgba(255, 215, 0, 0.1);
+        margin: 0.25rem 0;
+      }
+
+      .insight-item i.fa-star-half-alt {
+        color: #ffd700;
+        opacity: 0.9;
+      }
+
+      .boost.max {
+        color: #ff4e4e;
+        background: rgba(255, 78, 78, 0.1);
+        border: 1px solid rgba(255, 78, 78, 0.2);
+        box-shadow: 0 0 10px rgba(255, 78, 78, 0.2);
+      }
     `,
   ],
 })
@@ -514,7 +625,14 @@ export class ResourceDisplayComponent implements OnInit, OnDestroy {
     );
     if (!temple || !templeLevel) return 0;
 
-    return temple.baseProduction * templeLevel;
+    const effects = this.gameService.getCurrentEffects();
+    const currentKnowledge = Math.floor(this.resources.temporalKnowledge);
+    const multiplier = Math.pow(5, currentKnowledge);
+
+    return (
+      (temple.baseProduction * templeLevel * effects.knowledgeGainMultiplier) /
+      multiplier
+    );
   }
 
   getKnowledgeProgress(): number {
@@ -558,5 +676,132 @@ export class ResourceDisplayComponent implements OnInit, OnDestroy {
 
   hideSkillTree(): void {
     this.isSkillTreeVisible = false;
+  }
+
+  hasTemporalInsight(): boolean {
+    const state = this.gameService.getGameState();
+    return state.skills['temporal_insight']?.purchased ?? false;
+  }
+
+  getOptimalProduction(): number {
+    const currentProduction = this.productionPerTick * (1000 / this.tickRate);
+    const effects = this.gameService.getCurrentEffects();
+    const maxProduction =
+      currentProduction * (1 + effects.globalProductionBoost);
+    return maxProduction;
+  }
+
+  getOptimalCycleTime(): string {
+    const currentKnowledge = this.resources.temporalKnowledge;
+    if (currentKnowledge >= 5) {
+      return 'Prêt pour le cycle';
+    }
+
+    const remainingKnowledge = 5 - currentKnowledge;
+    const knowledgePerSecond =
+      this.getTemporalKnowledgePerTick() * (1000 / this.tickRate);
+    if (knowledgePerSecond <= 0) {
+      return 'Temple requis';
+    }
+
+    const secondsRemaining = remainingKnowledge / knowledgePerSecond;
+    const minutes = Math.floor(secondsRemaining / 60);
+    const seconds = Math.floor(secondsRemaining % 60);
+    return `${minutes}m ${seconds}s`;
+  }
+
+  getEfficiencyPercentage(): number {
+    const effects = this.gameService.getCurrentEffects();
+    const maxEfficiency =
+      effects.globalProductionBoost + effects.knowledgeGainMultiplier;
+    const currentEfficiency =
+      (this.productionPerTick * (1000 / this.tickRate)) /
+      this.getOptimalProduction();
+    return Math.round(currentEfficiency * 100);
+  }
+
+  getTimeToNextBuilding(): string {
+    const buildings = this.gameService.getAllBuildings();
+    let cheapestCost = Infinity;
+    let cheapestBuilding = null;
+
+    for (const building of buildings) {
+      const cost = this.gameService.getBuildingCost(building.id);
+      if (cost > this.resources.timeFragments && cost < cheapestCost) {
+        cheapestCost = cost;
+        cheapestBuilding = building;
+      }
+    }
+
+    if (!cheapestBuilding) return 'Tous débloqués';
+
+    const missingFragments = cheapestCost - this.resources.timeFragments;
+    const productionPerSecond = this.productionPerTick * (1000 / this.tickRate);
+    if (productionPerSecond <= 0) return '∞';
+
+    const seconds = Math.ceil(missingFragments / productionPerSecond);
+    if (seconds > 3600) {
+      return `${Math.floor(seconds / 3600)}h${Math.floor(
+        (seconds % 3600) / 60
+      )}m`;
+    } else if (seconds > 60) {
+      return `${Math.floor(seconds / 60)}m${seconds % 60}s`;
+    }
+    return `${seconds}s`;
+  }
+
+  getEstimatedPrestigePoints(): number {
+    const effects = this.gameService.getCurrentEffects();
+    return Math.ceil(
+      this.resources.temporalKnowledge * effects.prestigeGainMultiplier
+    );
+  }
+
+  getGainPerMinute(): number {
+    const productionPerSecond = this.productionPerTick * (1000 / this.tickRate);
+    return productionPerSecond * 60;
+  }
+
+  getActiveBoosts(): { label: string; value: string }[] {
+    const effects = this.gameService.getCurrentEffects();
+    const boosts: { label: string; value: string }[] = [];
+
+    // Vérifier et ajouter les différents boosts
+    if (effects.tickRateMultiplier < 1) {
+      boosts.push({
+        label: 'Réduction tick',
+        value: `-${((1 - effects.tickRateMultiplier) * 100).toFixed(1)}%`,
+      });
+    }
+
+    if (effects.resourceMultiplier > 1) {
+      boosts.push({
+        label: 'Multiplicateur',
+        value: `×${effects.resourceMultiplier.toFixed(1)}`,
+      });
+    }
+
+    // Ajouter les bonus spécifiques aux bâtiments
+    Object.entries(effects.buildingMultipliers).forEach(
+      ([buildingId, multiplier]) => {
+        if (multiplier > 1) {
+          const building = BUILDINGS[buildingId];
+          boosts.push({
+            label: `Bonus ${building.name}`,
+            value: `×${multiplier.toFixed(1)}`,
+          });
+        }
+      }
+    );
+
+    // Ajouter les bonus économiques
+    if (effects.globalCostReduction < 1) {
+      boosts.push({
+        label: 'Réduction coûts',
+        value: `-${((1 - effects.globalCostReduction) * 100).toFixed(1)}%`,
+      });
+    }
+
+    return boosts;
   }
 }

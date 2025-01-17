@@ -7,7 +7,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GameService } from '../../../../core/services/game.service';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { Building } from '../../../../core/models/building.model';
 import { BUILDINGS } from '../../../../core/data/buildings.data';
 import { GameState } from '../../../../core/models/game-state.model';
@@ -53,11 +53,25 @@ interface BuildingWithProduction extends Building {
           @if (building.isClickable && building.unlocked) {
           <button
             class="mining-button"
+            [class.cooldown]="building.id === 'chronotron' && isOnCooldown()"
             (click)="mineTimeFragment($event, building)"
           >
             <div class="mining-button-content">
-              <i class="fas fa-hammer"></i>
-              <span>Miner</span>
+              @if (building.id === 'chronotron' && isOnCooldown()) {
+              <i class="fas fa-clock"></i>
+              <span>{{ formatCooldown() }}</span>
+              } @else {
+              <i
+                class="{{
+                  building.id === 'chronotron'
+                    ? 'fas fa-forward-fast'
+                    : 'fas fa-hammer'
+                }}"
+              ></i>
+              <span>{{
+                building.id === 'chronotron' ? 'Activer' : 'Miner'
+              }}</span>
+              }
             </div>
             @for (floatingNumber of floatingNumbers; track floatingNumber.id) {
             <div
@@ -71,12 +85,23 @@ interface BuildingWithProduction extends Building {
           </button>
           }
         </div>
-        <div class="stats-container" *ngIf="building.id !== 'chronosphere'">
+        <div class="stats-container">
           <div class="stat-item">
-            @if (building.isClickable) {
+            @if (building.isClickable && building.id !== 'chronotron') {
             <div class="stat-label">Fragments de temps par minage</div>
             <div class="stat-value">
               +{{ getMiningValue(building) | number : '1.1-1' }}
+            </div>
+            } @else if (building.id === 'chronosphere') {
+            <div class="stat-label">&nbsp;</div>
+            } @else if (building.id === 'chronotron') {
+            <div class="stat-label">Bond</div>
+            <div class="stat-value">
+              +{{ getJumpDuration(building) | number : '1.0-0' }}s
+            </div>
+            <div class="stat-label">Cooldown</div>
+            <div class="stat-value">
+              {{ getCooldownDuration(building) | number : '1.0-0' }}s
             </div>
             } @else if (building.effect?.type === 'tick_rate') {
             <div class="stat-label">Réduction du tick</div>
@@ -142,14 +167,20 @@ interface BuildingWithProduction extends Building {
             } @else {
             <button
               class="upgrade-button"
-              [disabled]="!canPurchase(building.id)"
+              [class.disabled]="!canPurchase(building.id)"
+              [class.maxed]="isMaxTickRate(building)"
               (click)="purchase(building.id)"
             >
               <i class="fas fa-arrow-trend-up"></i>
               <span>Améliorer</span>
               <span class="cost">{{ getBuildingCost(building.id) }}</span>
             </button>
-            <button class="max-button" (click)="purchaseMax(building.id)">
+            <button
+              class="max-button"
+              (click)="purchaseMax(building.id)"
+              [class.disabled]="!canPurchase(building.id)"
+              [class.maxed]="isMaxTickRate(building)"
+            >
               Max
             </button>
             }
@@ -295,6 +326,7 @@ interface BuildingWithProduction extends Building {
         background: rgba(22, 27, 34, 0.8);
         margin-top: auto;
         display: flex;
+        height: 60px;
       }
 
       button {
@@ -722,7 +754,7 @@ interface BuildingWithProduction extends Building {
         overflow: hidden;
       }
 
-      .upgrade-button::before {
+      .card-footer button::before {
         content: '';
         position: absolute;
         top: 0;
@@ -796,7 +828,7 @@ interface BuildingWithProduction extends Building {
 
       .action-buttons {
         display: flex;
-        gap: 2px;
+        gap: 0px;
         background: rgba(13, 17, 23, 0.6);
         border-radius: 0 0 8px 8px;
         flex: 1;
@@ -953,20 +985,55 @@ interface BuildingWithProduction extends Building {
       }
 
       .activate-button {
-        background: rgba(220, 38, 38, 0.1) !important;
-        color: #ef4444 !important;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        height: 104px;
-      }
-
-      .activate-button:hover:not(.disabled) {
-        background: rgba(220, 38, 38, 0.2) !important;
-      }
-
-      .activate-button .button-frame {
+        background: linear-gradient(135deg, #0a2463 0%, #1e4bd2 100%);
+        color: #4facfe;
+        width: 100%;
         padding: 1rem;
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .activate-button:not(.disabled):hover {
+        background: linear-gradient(135deg, #0a2463 0%, #2857e5 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 0 20px rgba(79, 172, 254, 0.2);
+      }
+
+      .activate-button.disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        background: linear-gradient(135deg, #1a1f2e 0%, #2d3748 100%);
+      }
+
+      .mining-button.cooldown {
+        background: linear-gradient(135deg, #461220 0%, #8b0000 100%);
+        cursor: not-allowed;
+        border-left: 1px solid rgba(255, 0, 0, 0.2);
+      }
+
+      .mining-button.cooldown .mining-button-content {
+        color: #ff6b6b;
+      }
+
+      .mining-button.cooldown i {
+        color: #ff6b6b;
+        animation: pulse 1s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
       }
     `,
   ],
@@ -1057,7 +1124,52 @@ export class BuildingPanelComponent {
     return building.unlocked || false;
   }
 
-  mineTimeFragment(event: MouseEvent, building: Building): void {
+  async mineTimeFragment(
+    event: MouseEvent,
+    building: BuildingWithProduction
+  ): Promise<void> {
+    if (building.id === 'chronotron') {
+      // Vérifier si le Chronotron est en cooldown
+      if (this.isOnCooldown()) {
+        return;
+      }
+
+      const jumpDuration = this.getJumpDuration(building);
+      const cooldownDuration = this.getCooldownDuration(building);
+      const tickRate = this.gameService.getCurrentTickRate();
+      const numberOfTicks = Math.floor((jumpDuration * 1000) / tickRate);
+
+      // Calculer la production totale de tous les bâtiments
+      let totalProduction = 0;
+      const buildings = await firstValueFrom(
+        this.gameService.getAllBuildings$()
+      );
+      for (const b of buildings) {
+        if (b.production > 0) {
+          totalProduction += b.production;
+        }
+      }
+
+      const totalGain = Math.floor(totalProduction * numberOfTicks);
+
+      const confirmed = await this.dialogService.confirm({
+        title: 'Activer le Chronotron',
+        message: `Vous gagnez ${totalGain} fragments de temps en sautant dans le temps de ${Math.floor(
+          jumpDuration
+        )} secondes, mais le chronotron passera en refroidissement pendant ${Math.floor(
+          cooldownDuration
+        )} secondes.`,
+        confirmText: 'Activer',
+        cancelText: 'Annuler',
+        type: 'info',
+      });
+
+      if (confirmed) {
+        this.gameService.activateChronotron();
+      }
+      return;
+    }
+
     const rect = (event.target as HTMLElement).getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
@@ -1146,5 +1258,42 @@ export class BuildingPanelComponent {
     if (confirmed) {
       this.gameService.resetCycle();
     }
+  }
+
+  isMaxTickRate(building: BuildingWithProduction): boolean {
+    return (
+      building.effect?.type === 'tick_rate' &&
+      !this.gameService.canBuildingBeUpgraded(building.id)
+    );
+  }
+
+  activateChronotron(): void {
+    this.gameService.activateChronotron();
+  }
+
+  isOnCooldown(): boolean {
+    return this.gameService.isChronotronOnCooldown();
+  }
+
+  formatCooldown(): string {
+    const remainingMs = this.gameService.getChronotronRemainingCooldown();
+    return `${Math.ceil(remainingMs / 1000)}s`;
+  }
+
+  getJumpDuration(building: BuildingWithProduction): number {
+    if (!building.effect) return 60;
+    const level = this.gameService.getBuildingAmount(building.id);
+    const baseDuration = building.effect.jumpDuration ?? 60000;
+    const durationIncrease = (building.effect.durationIncrease ?? 0.05) * level;
+    return (baseDuration * (1 + durationIncrease)) / 1000; // Convertir en secondes
+  }
+
+  getCooldownDuration(building: BuildingWithProduction): number {
+    if (!building.effect) return 300;
+    const level = this.gameService.getBuildingAmount(building.id);
+    const cooldownDuration = building.effect.cooldown ?? 300000;
+    const cooldownReduction =
+      (building.effect.cooldownReduction ?? 0.05) * level;
+    return (cooldownDuration * (1 - cooldownReduction)) / 1000; // Convertir en secondes
   }
 }

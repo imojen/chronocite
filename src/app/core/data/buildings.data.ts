@@ -6,7 +6,7 @@ export const BUILDINGS: { [key: string]: Building } = {
     name: 'Générateur temporel',
     description: 'Génère des fragments de temps par seconde',
     baseCost: 15,
-    baseProduction: 100.5,
+    baseProduction: 0.5,
     unlocked: true,
     imageIndex: 1,
   },
@@ -21,19 +21,43 @@ export const BUILDINGS: { [key: string]: Building } = {
     requiredBuilding: 'generator',
     imageIndex: 8,
     isClickable: true,
-    clickValue: 10000,
+    clickValue: 1000000,
     clickIncrease: 0.25,
   },
   accelerator: {
     id: 'accelerator',
     name: 'Accélérateur',
-    description: 'Génère plus de fragments de temps par seconde',
+    description:
+      'Augmente la production de fragments de temps de tous les bâtiments.',
     baseCost: 100,
-    baseProduction: 1.5,
-    unlockCost: 750,
-    unlocked: false,
-    requiredBuilding: 'generator',
+    baseProduction: 0,
+    effect: {
+      type: 'production_boost',
+      value: 1.15,
+    },
     imageIndex: 2,
+    unlocked: false,
+    requiredBuilding: 'time_miner',
+  },
+  chronotron: {
+    id: 'chronotron',
+    name: 'Chronotron',
+    description:
+      'Permet de faire un bond dans le temps mais a besoin de refroidir',
+    baseCost: 10000,
+    unlockCost: 10000,
+    baseProduction: 0,
+    effect: {
+      type: 'time_jump',
+      jumpDuration: 60000, // 1 minute en ms
+      cooldown: 300000, // 5 minutes en ms
+      durationIncrease: 0.05, // +5% par niveau
+      cooldownReduction: 0.05, // -5% par niveau
+    },
+    imageIndex: 11,
+    unlocked: false,
+    requiredBuilding: 'accelerator',
+    isClickable: true,
   },
   time_compressor: {
     id: 'time_compressor',
@@ -118,7 +142,7 @@ export const BUILDINGS: { [key: string]: Building } = {
       'Produit lentement du savoir temporel qui sera converti en points de prestige lors du reset',
     baseCost: 50000,
     baseProduction: 0.001, // Production très faible de savoir par tick
-    unlockCost: 50000,
+    unlockCost: 20000,
     unlocked: false,
     requiredBuilding: 'temporal_conduit',
     effect: {

@@ -15,9 +15,14 @@ export interface Building {
       | 'production_boost'
       | 'resource_multiplier'
       | 'resource_production'
-      | 'cycle_reset';
-    value: number;
+      | 'cycle_reset'
+      | 'time_jump';
+    value?: number;
     target?: string;
+    jumpDuration?: number;
+    cooldown?: number;
+    durationIncrease?: number;
+    cooldownReduction?: number;
   };
   amount?: number;
   imageIndex: number;

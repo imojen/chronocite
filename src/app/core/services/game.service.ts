@@ -56,6 +56,8 @@ export class GameService implements OnDestroy {
 
   private gameLoop?: number;
 
+  private lastTimeJump = 0;
+
   constructor(private notificationService: NotificationService) {
     // Charger le jeu après l'initialisation complète
     const savedState = this.loadGame();
@@ -177,9 +179,11 @@ export class GameService implements OnDestroy {
     const effects = this.calculateEffects(this.gameStateSubject.value);
 
     // Calculer le coût avec l'augmentation progressive
+    const costProgressionRate =
+      this.COST_INCREASE_RATE * (1 - effects.costProgressionReduction);
     const cost =
       building.baseCost *
-      Math.pow(this.COST_INCREASE_RATE, currentAmount + additionalPurchases);
+      Math.pow(costProgressionRate, currentAmount + additionalPurchases);
 
     // Appliquer la réduction de coût globale
     return Math.floor(cost * effects.globalCostReduction);
@@ -198,20 +202,17 @@ export class GameService implements OnDestroy {
     const state = { ...this.gameStateSubject.value };
     const cost = this.getBuildingCost(buildingId);
 
-    if (state.resources.timeFragments < cost) return false;
+    if (
+      state.resources.timeFragments < cost ||
+      !this.canBuildingBeUpgraded(buildingId)
+    )
+      return false;
 
     // Mettre à jour les ressources et les bâtiments
     state.resources.timeFragments -= cost;
     state.buildings[buildingId] = (state.buildings[buildingId] || 0) + 1;
 
     this.gameStateSubject.next(state);
-
-    // Si c'est un compresseur temporel, émettre le nouveau tick rate
-    const building = BUILDINGS[buildingId];
-    if (building?.effect?.type === 'tick_rate') {
-      this.tickRateSubject.next(this.getCurrentTickRate());
-    }
-
     return true;
   }
 
@@ -304,14 +305,15 @@ export class GameService implements OnDestroy {
   private update(): void {
     const currentState = { ...this.gameStateSubject.value };
     const now = Date.now();
-    const delta = (now - currentState.lastUpdate) / 1000;
+    const delta = (now - currentState.lastUpdate) / this.getCurrentTickRate(); // Convertir en nombre de ticks
+    const effects = this.calculateEffects(currentState);
 
-    currentState.totalPlayTime += delta;
+    currentState.totalPlayTime += (now - currentState.lastUpdate) / 1000; // Garder le temps total en secondes
     currentState.lastUpdate = now;
 
     // Production de fragments de temps
     const fragmentsProduction = this.calculateProduction(currentState);
-    const fragments = fragmentsProduction * delta;
+    const fragments = fragmentsProduction * delta; // Production par tick * nombre de ticks
     currentState.resources.timeFragments += fragments;
     currentState.totalProduction += fragments;
 
@@ -327,7 +329,10 @@ export class GameService implements OnDestroy {
       );
       const multiplier = Math.pow(5, currentKnowledge); // Chaque point est 5x plus long
       const knowledgeProduction =
-        (temple.baseProduction * templeLevel) / multiplier;
+        (temple.baseProduction *
+          templeLevel *
+          effects.knowledgeGainMultiplier) /
+        multiplier;
 
       // Vérifier si on ne dépasse pas la limite
       const newKnowledge =
@@ -342,19 +347,15 @@ export class GameService implements OnDestroy {
   }
 
   private calculateProduction(state: GameState): number {
-    return Object.entries(state.buildings).reduce(
-      (total, [buildingId, amount]) => {
-        const building = BUILDINGS[buildingId];
-        if (!building || !building.baseProduction) return total;
+    let totalProduction = 0;
 
-        const effects = this.calculateEffects(state);
-        const buildingProduction =
-          building.baseProduction * amount * effects.globalProductionBoost;
+    // Calculer la production de chaque bâtiment
+    Object.keys(state.buildings).forEach((buildingId) => {
+      totalProduction += this.calculateBuildingProduction(buildingId, state);
+    });
 
-        return total + buildingProduction;
-      },
-      0
-    );
+    // Garantir une production minimale de 0.5 par tick
+    return Math.max(0.5, totalProduction);
   }
 
   private updateState(newState: GameState): void {
@@ -541,23 +542,21 @@ export class GameService implements OnDestroy {
   }
 
   getCurrentProduction(): number {
-    const effects = this.calculateEffects(this.gameStateSubject.value);
-    const baseProduction = this.calculateProduction(
-      this.gameStateSubject.value
-    );
-    // Convertir la production par tick en production par seconde
-    return (
-      ((baseProduction * 1000) / this.getCurrentTickRate()) *
-      effects.resourceMultiplier
-    );
+    const state = this.gameStateSubject.value;
+    let totalProduction = 0;
+
+    // Calculer la production de chaque bâtiment
+    Object.keys(state.buildings).forEach((buildingId) => {
+      totalProduction += this.calculateBuildingProduction(buildingId, state);
+    });
+
+    // Garantir une production minimale de 0.5 par tick
+    return Math.max(0.5, totalProduction);
   }
 
   getProductionPerTick(): number {
-    const effects = this.calculateEffects(this.gameStateSubject.value);
-    const baseProduction = this.calculateProduction(
-      this.gameStateSubject.value
-    );
-    return baseProduction * effects.resourceMultiplier;
+    // Utiliser la même méthode que getCurrentProduction pour la cohérence
+    return this.getCurrentProduction();
   }
 
   getLastUpdate(): number {
@@ -570,6 +569,10 @@ export class GameService implements OnDestroy {
       globalCostReduction: 1,
       tickRateMultiplier: 1,
       resourceMultiplier: 1,
+      knowledgeGainMultiplier: 1,
+      prestigeGainMultiplier: 1,
+      costProgressionReduction: 0,
+      buildingMultipliers: {} as { [key: string]: number },
     };
 
     // Appliquer les effets des bâtiments
@@ -578,11 +581,9 @@ export class GameService implements OnDestroy {
       if (building?.effect) {
         switch (building.effect.type) {
           case 'tick_rate':
-            // Limite la réduction du tick rate à 50% maximum
-            effects.tickRateMultiplier = Math.max(
-              0.5,
-              effects.tickRateMultiplier *
-                Math.pow(building.effect.value, amount)
+            effects.tickRateMultiplier *= Math.pow(
+              building.effect.value ?? 1,
+              amount
             );
             break;
           case 'cost_reduction':
@@ -590,14 +591,14 @@ export class GameService implements OnDestroy {
             effects.globalCostReduction = Math.max(
               0.25,
               effects.globalCostReduction *
-                Math.pow(building.effect.value, amount)
+                Math.pow(building.effect.value ?? 1, amount)
             );
             break;
           case 'production_boost':
             if (building.effect.target) {
               // Pas de limite pour les bonus ciblés
               effects.globalProductionBoost *= Math.pow(
-                building.effect.value,
+                building.effect.value ?? 1,
                 amount
               );
             } else {
@@ -605,7 +606,7 @@ export class GameService implements OnDestroy {
               effects.globalProductionBoost = Math.min(
                 5,
                 effects.globalProductionBoost *
-                  Math.pow(building.effect.value, amount)
+                  Math.pow(building.effect.value ?? 1, amount)
               );
             }
             break;
@@ -614,12 +615,70 @@ export class GameService implements OnDestroy {
             effects.resourceMultiplier = Math.min(
               10,
               effects.resourceMultiplier *
-                Math.pow(building.effect.value, amount)
+                Math.pow(building.effect.value ?? 1, amount)
             );
             break;
         }
       }
     });
+
+    // Appliquer les effets des compétences
+    if (state.skills) {
+      // Maîtrise Temporelle : +25% production globale
+      if (state.skills['temporal_mastery']?.purchased) {
+        effects.globalProductionBoost *= 1.25;
+      }
+
+      // Expertise des Générateurs : +100% production des générateurs
+      if (state.skills['generator_expertise']?.purchased) {
+        effects.buildingMultipliers['generator'] =
+          (effects.buildingMultipliers['generator'] || 1) * 2;
+      }
+
+      // Maîtrise des Accélérateurs : +100% production des accélérateurs
+      if (state.skills['accelerator_mastery']?.purchased) {
+        effects.buildingMultipliers['accelerator'] =
+          (effects.buildingMultipliers['accelerator'] || 1) * 2;
+      }
+
+      // Efficacité Quantique : +50% production des compresseurs
+      if (state.skills['quantum_efficiency']?.purchased) {
+        effects.buildingMultipliers['time_compressor'] =
+          (effects.buildingMultipliers['time_compressor'] || 1) * 1.5;
+      }
+
+      // Réduction des Coûts : -20% sur le coût des bâtiments
+      if (state.skills['cost_reduction']?.purchased) {
+        effects.globalCostReduction *= 0.8;
+      }
+
+      // Construction Efficace : -15% sur la progression des coûts
+      if (state.skills['efficient_construction']?.purchased) {
+        effects.costProgressionReduction = 0.15;
+      }
+
+      // Maîtrise du Savoir : +50% gain de savoir temporel
+      if (state.skills['knowledge_mastery']?.purchased) {
+        effects.knowledgeGainMultiplier *= 1.5;
+      }
+
+      // Optimisation des Cycles : +25% points de prestige
+      if (state.skills['cycle_optimization']?.purchased) {
+        effects.prestigeGainMultiplier *= 1.25;
+      }
+
+      // Maîtrise Économique : +10% production par niveau de réduction de coût
+      if (state.skills['economic_mastery']?.purchased) {
+        const costReductionSkills = [
+          'cost_reduction',
+          'efficient_construction',
+        ];
+        const costReductionLevel = Object.entries(state.skills).filter(
+          ([id, skill]) => skill.purchased && costReductionSkills.includes(id)
+        ).length;
+        effects.globalProductionBoost *= 1 + 0.1 * costReductionLevel;
+      }
+    }
 
     return effects;
   }
@@ -627,10 +686,10 @@ export class GameService implements OnDestroy {
   // Ajouter une méthode pour obtenir le tick rate actuel
   getCurrentTickRate(): number {
     const effects = this.calculateEffects(this.gameStateSubject.value);
-    return Math.max(1000, this.TICK_RATE * effects.tickRateMultiplier);
+    return Math.max(500, this.TICK_RATE * effects.tickRateMultiplier);
   }
 
-  // Nouvelle méthode pour vérifier si un bâtiment peut encore être acheté
+  // Modifier la méthode pour vérifier si un bâtiment peut être amélioré
   canBuildingBeUpgraded(buildingId: string): boolean {
     const building = BUILDINGS[buildingId];
     if (!building) return false;
@@ -639,8 +698,8 @@ export class GameService implements OnDestroy {
     if (building.effect?.type === 'tick_rate') {
       const effects = this.calculateEffects(this.gameStateSubject.value);
       const currentTickRate = this.TICK_RATE * effects.tickRateMultiplier;
-      // Empêcher l'achat si le tick rate est <= 1000ms (1 seconde)
-      return currentTickRate > 1000;
+      // Empêcher l'achat si le tick rate est <= 500ms (0.5 seconde)
+      return currentTickRate > 500;
     }
 
     return true;
@@ -693,12 +752,30 @@ export class GameService implements OnDestroy {
     const building = BUILDINGS[buildingId];
     const amount = state.buildings[buildingId] || 0;
     const effects = this.calculateEffects(state);
-    return (
-      building.baseProduction *
-      amount *
-      effects.globalProductionBoost *
-      effects.resourceMultiplier
-    );
+
+    // Production de base du bâtiment
+    let production = building.baseProduction * amount;
+
+    // Appliquer le multiplicateur global de production
+    production *= effects.globalProductionBoost;
+
+    // Appliquer le multiplicateur spécifique au bâtiment
+    if (effects.buildingMultipliers[buildingId]) {
+      production *= effects.buildingMultipliers[buildingId];
+    }
+
+    // Appliquer le multiplicateur de ressources
+    production *= effects.resourceMultiplier;
+
+    // Garantir une production minimale de 0.5 par tick si c'est le seul bâtiment
+    if (
+      Object.keys(state.buildings).length === 1 &&
+      buildingId === 'generator'
+    ) {
+      production = Math.max(0.5, production);
+    }
+
+    return production;
   }
 
   getTotalPlayTime(): number {
@@ -710,12 +787,14 @@ export class GameService implements OnDestroy {
 
   purchaseMaxBuilding(buildingId: string): void {
     let currentState = { ...this.gameStateSubject.value };
+    if (!this.canBuildingBeUpgraded(buildingId)) return;
+
     let resources = currentState.resources.timeFragments;
     let purchased = 0;
 
     while (true) {
       const cost = this.getBuildingCost(buildingId);
-      if (resources < cost) break;
+      if (resources < cost || !this.canBuildingBeUpgraded(buildingId)) break;
 
       resources -= cost;
       purchased++;
@@ -840,59 +919,54 @@ export class GameService implements OnDestroy {
   // Ajouter une méthode pour gérer le reset du cycle
   resetCycle(): void {
     const currentState = this.gameStateSubject.value;
-    const temporalKnowledge = currentState.resources.temporalKnowledge;
-    // Arrondir le savoir temporel à l'entier supérieur et calculer les points
-    const prestigePoints = Math.ceil(temporalKnowledge);
+    const prestigePoints = this.calculatePrestigePoints();
 
-    // Sauvegarder les statistiques
-    const stats = {
-      ...currentState.stats,
-      cyclesCompleted: currentState.stats.cyclesCompleted + 1,
-      totalTemporalKnowledge:
-        currentState.stats.totalTemporalKnowledge + temporalKnowledge,
-      totalPrestigePoints:
-        currentState.stats.totalPrestigePoints + prestigePoints,
-    };
+    // Réinitialiser l'état unlocked de tous les bâtiments sauf le générateur
+    Object.values(BUILDINGS).forEach((building) => {
+      if (building.id !== 'generator') {
+        building.unlocked = false;
+      }
+    });
 
-    // Créer le nouvel état en repartant de zéro
+    // Créer un nouvel état avec les valeurs par défaut
     const newState: GameState = {
       resources: {
         timeFragments: 0,
         temporalKnowledge: 0,
         prestigePoints: currentState.resources.prestigePoints + prestigePoints,
       },
-      buildings: {
-        generator: 1, // Le générateur reste au niveau 1
-      },
-      upgrades: {},
-      skills: currentState.skills, // Garder les compétences débloquées
+      buildings: {},
       multipliers: {
         global: 1,
         buildings: {},
         costs: 1,
         tickRate: 1,
       },
-      unlockedBuildings: {
-        generator: true, // Le générateur reste débloqué
-      },
-      stats,
-      lastUpdate: Date.now(),
+      skills: { ...currentState.skills }, // Conserver les compétences
+      upgrades: { ...currentState.upgrades }, // Conserver les améliorations
       totalPlayTime: currentState.totalPlayTime,
+      lastUpdate: Date.now(),
+      unlockedBuildings: { generator: true }, // Réinitialiser les bâtiments débloqués
+      stats: {
+        ...currentState.stats,
+        cyclesCompleted: currentState.stats.cyclesCompleted + 1,
+        totalTemporalKnowledge:
+          currentState.stats.totalTemporalKnowledge +
+          currentState.resources.temporalKnowledge,
+        totalPrestigePoints:
+          currentState.stats.totalPrestigePoints + prestigePoints,
+      },
       totalProduction: 0,
+      chronotronCooldownEndTime: undefined, // Réinitialiser le cooldown du Chronotron
     };
 
-    // Réinitialiser tous les bâtiments dans BUILDINGS
-    Object.keys(BUILDINGS).forEach((buildingId) => {
-      if (buildingId !== 'generator') {
-        BUILDINGS[buildingId] = {
-          ...BUILDINGS[buildingId],
-          unlocked: false,
-        };
-      }
-    });
-
+    // Réinitialiser l'état du jeu
     this.gameStateSubject.next(newState);
-    this.saveGame(); // Sauvegarder immédiatement après le reset
+
+    // Redémarrer le game loop avec le nouveau tick rate
+    this.startGameLoop();
+
+    // Notification
     this.notificationService.show(
       `Cycle terminé ! +${prestigePoints} points de prestige`,
       'success'
@@ -964,7 +1038,7 @@ export class GameService implements OnDestroy {
     });
   }
 
-  private updateGameState(newState: GameState): void {
+  updateGameState(newState: GameState): void {
     this.gameStateSubject.next(newState);
   }
 
@@ -972,5 +1046,63 @@ export class GameService implements OnDestroy {
     return this.gameState$.pipe(
       map((state) => state.resources.prestigePoints ?? 0)
     );
+  }
+
+  calculatePrestigePoints(): number {
+    const currentState = this.gameStateSubject.value;
+    const temporalKnowledge = currentState.resources.temporalKnowledge;
+    const effects = this.calculateEffects(currentState);
+    return Math.ceil(temporalKnowledge * effects.prestigeGainMultiplier);
+  }
+
+  activateChronotron(): void {
+    const state = this.getGameState();
+    const chronotron = this.findBuildingById('chronotron');
+    if (!chronotron) return;
+
+    // Calculer la durée du cooldown en secondes
+    const cooldownDuration = this.calculateChronotronCooldown(chronotron);
+
+    // Sauvegarder le timestamp de fin du cooldown (convertir en millisecondes)
+    const newState = {
+      ...state,
+      chronotronCooldownEndTime: Date.now() + cooldownDuration * 1000,
+    };
+
+    this.saveGameState(newState);
+  }
+
+  isChronotronOnCooldown(): boolean {
+    const state = this.getGameState();
+    if (!state.chronotronCooldownEndTime) return false;
+    return Date.now() < state.chronotronCooldownEndTime;
+  }
+
+  getChronotronRemainingCooldown(): number {
+    const state = this.getGameState();
+    if (!state.chronotronCooldownEndTime) return 0;
+    const remaining = state.chronotronCooldownEndTime - Date.now();
+    return remaining > 0 ? remaining : 0;
+  }
+
+  private findBuildingById(id: string): Building | undefined {
+    return BUILDINGS[id];
+  }
+
+  private calculateChronotronCooldown(chronotron: Building): number {
+    const state = this.getGameState();
+    const level = state.buildings['chronotron'] || 0;
+
+    if (!chronotron.unlocked || level === 0 || !chronotron.effect) return 0;
+
+    // Retourner la durée en secondes
+    const baseCooldown = chronotron.effect.cooldown ?? 300; // 300 secondes = 5 minutes
+    const cooldownReduction =
+      (chronotron.effect.cooldownReduction ?? 0.05) * level;
+    return Math.floor(baseCooldown * (1 - cooldownReduction)); // Arrondir à la seconde inférieure
+  }
+
+  private saveGameState(state: GameState): void {
+    this.gameStateSubject.next(state);
   }
 }

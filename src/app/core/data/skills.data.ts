@@ -71,7 +71,7 @@ export const SKILL_BRANCHES: Record<SkillBranchType, SkillBranch> = {
         icon: 'bolt',
         position: { x: 2, y: 1 },
         requirements: {
-          skills: ['temporal_mastery'],
+          skills: ['generator_expertise'],
         },
         unlocked: false,
         purchased: false,
@@ -95,7 +95,7 @@ export const SKILL_BRANCHES: Record<SkillBranchType, SkillBranch> = {
         icon: 'compress',
         position: { x: 3, y: 2 },
         requirements: {
-          skills: ['generator_expertise', 'accelerator_mastery'],
+          skills: ['accelerator_mastery'],
         },
         unlocked: false,
         purchased: false,
@@ -163,7 +163,7 @@ export const SKILL_BRANCHES: Record<SkillBranchType, SkillBranch> = {
         icon: 'shopping-cart',
         position: { x: 2, y: 1 },
         requirements: {
-          skills: ['cost_reduction'],
+          skills: ['efficient_construction'],
         },
         unlocked: false,
         purchased: false,
@@ -185,33 +185,7 @@ export const SKILL_BRANCHES: Record<SkillBranchType, SkillBranch> = {
         icon: 'chart-line',
         position: { x: 3, y: 2 },
         requirements: {
-          skills: ['efficient_construction', 'bulk_purchasing'],
-        },
-        unlocked: false,
-        purchased: false,
-      },
-      {
-        id: 'endgame',
-        name: 'End-game',
-        description:
-          'La maîtrise ultime du temps. Terminer le jeu débloque un nouveau commencement...',
-        branch: 'economic_management',
-        cost: 10,
-        effects: [
-          {
-            type: 'special',
-            value: 1,
-            description: 'Termine le jeu et débloque un nouveau cycle',
-          },
-        ],
-        icon: 'infinity',
-        position: { x: 1, y: 3 },
-        requirements: {
-          skills: [
-            'quantum_efficiency',
-            'economic_mastery',
-            'prestige_mastery',
-          ],
+          skills: ['bulk_purchasing'],
         },
         unlocked: false,
         purchased: false,
@@ -279,7 +253,7 @@ export const SKILL_BRANCHES: Record<SkillBranchType, SkillBranch> = {
         icon: 'chart-line',
         position: { x: 2, y: 1 },
         requirements: {
-          skills: ['knowledge_mastery'],
+          skills: ['cycle_optimization'],
         },
         unlocked: false,
         purchased: false,
@@ -300,7 +274,7 @@ export const SKILL_BRANCHES: Record<SkillBranchType, SkillBranch> = {
         icon: 'crown',
         position: { x: 3, y: 2 },
         requirements: {
-          skills: ['cycle_optimization', 'temporal_insight'],
+          skills: ['temporal_insight'],
         },
         unlocked: false,
         purchased: false,

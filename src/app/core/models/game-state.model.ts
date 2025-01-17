@@ -36,6 +36,7 @@ export interface GameState {
   lastUpdate: number;
   totalPlayTime: number;
   totalProduction: number;
+  chronotronCooldownEndTime?: number;
 }
 
 export interface Building {
