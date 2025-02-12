@@ -129,7 +129,8 @@ interface BuildingWithProduction extends Building {
             }
             <div class="stat-value">
               +{{
-                calculateBoostValue(building.effect?.value) | number : '1.1-1'
+                calculateEffectValue(building.effect?.value, building)
+                  | number : '1.1-1'
               }}%
             </div>
             } @else if (building.effect?.type === 'resource_multiplier') {
@@ -167,8 +168,11 @@ interface BuildingWithProduction extends Building {
             } @else {
             <button
               class="upgrade-button"
-              [class.disabled]="!canPurchase(building.id)"
-              [class.maxed]="isMaxTickRate(building)"
+              [class.disabled]="
+                !canPurchase(building.id) || isMaxLevel(building)
+              "
+              [class.maxed]="isMaxLevel(building)"
+              [disabled]="!canPurchase(building.id) || isMaxLevel(building)"
               (click)="purchase(building.id)"
             >
               <i class="fas fa-arrow-trend-up"></i>
@@ -177,9 +181,12 @@ interface BuildingWithProduction extends Building {
             </button>
             <button
               class="max-button"
+              [class.disabled]="
+                !canPurchase(building.id) || isMaxLevel(building)
+              "
+              [class.maxed]="isMaxLevel(building)"
+              [disabled]="!canPurchase(building.id) || isMaxLevel(building)"
               (click)="purchaseMax(building.id)"
-              [class.disabled]="!canPurchase(building.id)"
-              [class.maxed]="isMaxTickRate(building)"
             >
               Max
             </button>
@@ -1035,6 +1042,23 @@ interface BuildingWithProduction extends Building {
           opacity: 1;
         }
       }
+
+      .maxed {
+        background: linear-gradient(45deg, #4a1414, #691818) !important;
+        border: 1px solid #8b2020 !important;
+        cursor: not-allowed !important;
+        opacity: 0.8;
+      }
+
+      .maxed .button-frame {
+        color: #ff6b6b !important;
+        text-shadow: 0 0 5px #ff0000;
+      }
+
+      .maxed:hover {
+        background: linear-gradient(45deg, #5a1818, #792020) !important;
+        box-shadow: 0 0 10px rgba(255, 0, 0, 0.3) !important;
+      }
     `,
   ],
 })
@@ -1095,7 +1119,12 @@ export class BuildingPanelComponent {
   }
 
   canPurchase(buildingId: string): boolean {
-    return this.gameService.canPurchaseBuilding(buildingId);
+    const building = BUILDINGS[buildingId];
+    if (!building) return false;
+    return (
+      this.gameService.canPurchaseBuilding(buildingId) &&
+      !this.isMaxLevel(building)
+    );
   }
 
   getBuildingCost(buildingId: string): number {
@@ -1231,6 +1260,11 @@ export class BuildingPanelComponent {
         const totalReduction = 1 - Math.pow(value, amount);
         return Math.round(totalReduction * 10000) / 100;
 
+      case 'production_boost':
+        // Calculer l'augmentation totale de production en prenant en compte le niveau
+        const totalBoost = Math.pow(value, amount);
+        return Math.round((totalBoost - 1) * 10000) / 100;
+
       default:
         return (value - 1) * 100;
     }
@@ -1295,5 +1329,13 @@ export class BuildingPanelComponent {
     const cooldownReduction =
       (building.effect.cooldownReduction ?? 0.05) * level;
     return (cooldownDuration * (1 - cooldownReduction)) / 1000; // Convertir en secondes
+  }
+
+  isMaxLevel(building: Building | BuildingWithProduction): boolean {
+    const amount =
+      'amount' in building && building.amount !== undefined
+        ? building.amount
+        : this.gameService.getBuildingAmount(building.id);
+    return building.maxLevel !== undefined && amount >= building.maxLevel;
   }
 }

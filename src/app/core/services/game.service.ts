@@ -179,8 +179,11 @@ export class GameService implements OnDestroy {
     const effects = this.calculateEffects(this.gameStateSubject.value);
 
     // Calculer le coût avec l'augmentation progressive
-    const costProgressionRate =
-      this.COST_INCREASE_RATE * (1 - effects.costProgressionReduction);
+    // La réduction de progression des coûts s'applique au taux d'augmentation au-dessus de 1
+    const baseRate = this.COST_INCREASE_RATE - 1; // 0.12
+    const reducedRate = baseRate * (1 - effects.costProgressionReduction); // Réduire seulement la partie au-dessus de 1
+    const costProgressionRate = 1 + reducedRate; // Réajouter 1 pour avoir le taux final
+
     const cost =
       building.baseCost *
       Math.pow(costProgressionRate, currentAmount + additionalPurchases);
@@ -213,6 +216,10 @@ export class GameService implements OnDestroy {
     state.buildings[buildingId] = (state.buildings[buildingId] || 0) + 1;
 
     this.gameStateSubject.next(state);
+
+    // Forcer la mise à jour de la production
+    this.startGameLoop();
+
     return true;
   }
 
@@ -596,18 +603,24 @@ export class GameService implements OnDestroy {
             break;
           case 'production_boost':
             if (building.effect.target) {
-              // Pas de limite pour les bonus ciblés
-              effects.globalProductionBoost *= Math.pow(
-                building.effect.value ?? 1,
-                amount
-              );
+              // Pour les bonus ciblés, on utilise une progression logarithmique
+              // Cela donne une croissance plus rapide au début qui ralentit progressivement
+              const targetBoost =
+                Math.log10(amount + 1) *
+                (building.effect.value ? (building.effect.value - 1) * 10 : 1);
+              effects.buildingMultipliers[building.effect.target] =
+                (effects.buildingMultipliers[building.effect.target] || 1) *
+                (1 + targetBoost);
             } else {
-              // Limite le bonus global à x5 maximum
-              effects.globalProductionBoost = Math.min(
-                5,
-                effects.globalProductionBoost *
-                  Math.pow(building.effect.value ?? 1, amount)
-              );
+              // Pour les bonus globaux, on utilise aussi une progression logarithmique
+              // mais avec une limite plus basse pour éviter les bonus trop puissants
+              const baseBoost = building.effect.value
+                ? (building.effect.value - 1) * 5
+                : 0.15;
+              const globalBoost = Math.log10(amount + 1) * baseBoost;
+              // On limite à x3 (300%) par bâtiment pour le bonus global
+              const limitedBoost = Math.min(3, 1 + globalBoost);
+              effects.globalProductionBoost *= limitedBoost;
             }
             break;
           case 'resource_multiplier':
@@ -693,6 +706,12 @@ export class GameService implements OnDestroy {
   canBuildingBeUpgraded(buildingId: string): boolean {
     const building = BUILDINGS[buildingId];
     if (!building) return false;
+
+    // Vérifier si le niveau maximum est atteint
+    const currentLevel = this.gameStateSubject.value.buildings[buildingId] || 0;
+    if (building.maxLevel && currentLevel >= building.maxLevel) {
+      return false;
+    }
 
     // Si c'est un compresseur temporel, vérifier si la limite est atteinte
     if (building.effect?.type === 'tick_rate') {
@@ -1058,18 +1077,50 @@ export class GameService implements OnDestroy {
   activateChronotron(): void {
     const state = this.getGameState();
     const chronotron = this.findBuildingById('chronotron');
-    if (!chronotron) return;
+    if (!chronotron || !chronotron.effect) return;
 
-    // Calculer la durée du cooldown en secondes
-    const cooldownDuration = this.calculateChronotronCooldown(chronotron);
+    const level = state.buildings['chronotron'] || 0;
+    if (!chronotron.unlocked || level === 0) return;
 
-    // Sauvegarder le timestamp de fin du cooldown (convertir en millisecondes)
+    // Calculer la durée du saut
+    const baseJumpDuration = chronotron.effect.jumpDuration ?? 60; // 60 secondes par défaut
+    const durationIncrease =
+      (chronotron.effect.durationIncrease ?? 0.05) * level;
+    const jumpDuration = Math.floor(baseJumpDuration * (1 + durationIncrease));
+
+    // Calculer le nombre de ticks pendant le saut
+    const tickRate = this.getCurrentTickRate();
+    const numberOfTicks = Math.floor(jumpDuration / tickRate);
+
+    // Calculer la production totale pendant le saut
+    let totalProduction = 0;
+    Object.entries(state.buildings).forEach(([buildingId, amount]) => {
+      if (amount > 0) {
+        totalProduction += this.calculateBuildingProduction(buildingId, state);
+      }
+    });
+
+    const totalGain = Math.floor(totalProduction * numberOfTicks);
+
+    // Mettre à jour les ressources
     const newState = {
       ...state,
-      chronotronCooldownEndTime: Date.now() + cooldownDuration * 1000,
+      resources: {
+        ...state.resources,
+        timeFragments: state.resources.timeFragments + totalGain,
+      },
+      // Sauvegarder le timestamp de fin du cooldown
+      chronotronCooldownEndTime:
+        Date.now() + this.calculateChronotronCooldown(chronotron) * 1000,
     };
 
     this.saveGameState(newState);
+
+    // Notification du gain
+    this.notificationService.show(
+      `Bond dans le temps effectué ! +${totalGain} fragments de temps`,
+      'success'
+    );
   }
 
   isChronotronOnCooldown(): boolean {

@@ -21,7 +21,7 @@ export const BUILDINGS: { [key: string]: Building } = {
     requiredBuilding: 'generator',
     imageIndex: 8,
     isClickable: true,
-    clickValue: 1000000,
+    clickValue: 1,
     clickIncrease: 0.25,
   },
   accelerator: {
@@ -58,6 +58,7 @@ export const BUILDINGS: { [key: string]: Building } = {
     unlocked: false,
     requiredBuilding: 'accelerator',
     isClickable: true,
+    maxLevel: 10,
   },
   time_compressor: {
     id: 'time_compressor',
