@@ -5,6 +5,12 @@ on:
     branches:
       - master
 
+# Définir les permissions
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
