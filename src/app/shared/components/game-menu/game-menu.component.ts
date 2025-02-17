@@ -12,6 +12,11 @@ import { Observable } from 'rxjs';
   template: `
     <nav class="menu">
       <div class="menu-actions">
+        <div class="disclaimer">
+          <strong>Open alpha</strong><br />
+          Le jeu peut contenir des bugs,<br />
+          merci de les signaler
+        </div>
         <button class="action-button" (click)="saveGame()">Sauvegarder</button>
         <button class="action-button warning" (click)="resetGame()">
           Réinitialiser
@@ -76,11 +81,29 @@ import { Observable } from 'rxjs';
 
       .menu-actions {
         display: flex;
-        flex-direction: row;
-        justify-content: center;
-        gap: 1.5rem;
-        padding: 0.4rem 0;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 0;
         border-top: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .disclaimer {
+        font-size: 0.8rem;
+        color: #f44336;
+        text-align: center;
+        padding: 0.5rem;
+        background: repeating-linear-gradient(
+          45deg,
+          rgba(244, 67, 54, 0.1),
+          rgba(244, 67, 54, 0.1) 10px,
+          rgba(244, 67, 54, 0.15) 10px,
+          rgba(244, 67, 54, 0.15) 20px
+        );
+        border-radius: 4px;
+        margin-bottom: 0.5rem;
+        border: 1px solid rgba(244, 67, 54, 0.2);
+        text-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
       }
 
       .action-button {
