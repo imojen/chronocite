@@ -3,6 +3,7 @@ import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { NotificationService } from '../../../core/services/notification.service';
 import { GameService } from '../../../core/services/game.service';
+import { DialogService } from '../../../core/services/dialog.service';
 import { Observable } from 'rxjs';
 
 @Component({
@@ -11,15 +12,20 @@ import { Observable } from 'rxjs';
   imports: [CommonModule, RouterModule],
   template: `
     <nav class="menu">
+      <div class="disclaimer">
+        <strong>Open alpha v0.2.1</strong><br />
+        Le jeu peut contenir des bugs,<br />
+        merci de les signaler
+      </div>
       <div class="menu-actions">
-        <div class="disclaimer">
-          <strong>Open alpha</strong><br />
-          Le jeu peut contenir des bugs,<br />
-          merci de les signaler
-        </div>
-        <button class="action-button" (click)="saveGame()">Sauvegarder</button>
+        <button class="action-button" (click)="saveGame(true)">
+          Sauvegarder
+        </button>
         <button class="action-button warning" (click)="resetGame()">
           Réinitialiser
+        </button>
+        <button class="action-button info" (click)="showAbout()">
+          À propos
         </button>
       </div>
     </nav>
@@ -81,7 +87,8 @@ import { Observable } from 'rxjs';
 
       .menu-actions {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
+        justify-content: center;
         align-items: center;
         gap: 1rem;
         padding: 1rem 0;
@@ -109,14 +116,16 @@ import { Observable } from 'rxjs';
       .action-button {
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: 0.3rem;
-        padding: 0.3rem;
+        padding: 0.3rem 0.6rem;
         border: none;
         background: transparent;
         color: rgba(79, 172, 254, 0.5);
         cursor: pointer;
         transition: all 0.2s;
         font-size: 0.75rem;
+        min-width: 80px;
       }
 
       .action-button:hover {
@@ -131,6 +140,15 @@ import { Observable } from 'rxjs';
       .action-button.warning:hover {
         color: #f44336;
       }
+
+      .action-button.info {
+        background: transparent;
+        color: rgba(255, 215, 0, 0.6);
+      }
+
+      .action-button.info:hover {
+        color: #ffd700;
+      }
     `,
   ],
 })
@@ -139,7 +157,8 @@ export class GameMenuComponent implements OnInit {
 
   constructor(
     private notificationService: NotificationService,
-    private gameService: GameService
+    private gameService: GameService,
+    private dialogService: DialogService
   ) {
     this.availableUpgrades$ = this.notificationService.availableUpgradesCount$;
   }
@@ -148,8 +167,8 @@ export class GameMenuComponent implements OnInit {
     // Initialisation si nécessaire
   }
 
-  saveGame(): void {
-    this.gameService.saveGame();
+  saveGame(showNotification: boolean = true): void {
+    this.gameService.saveGame(showNotification);
   }
 
   resetGame(): void {
@@ -157,5 +176,16 @@ export class GameMenuComponent implements OnInit {
       this.gameService.resetGame();
       this.notificationService.show('Jeu réinitialisé', 'info');
     }
+  }
+
+  async showAbout(): Promise<void> {
+    await this.dialogService.confirm({
+      title: 'À propos',
+      message:
+        "Jeu open-source entièrement conçu par l'IA claude-3.5-sonnet via Cursor. https://github.com/imojen/chronocite",
+      confirmText: 'Fermer',
+      type: 'info',
+      cancelText: '',
+    });
   }
 }

@@ -85,11 +85,13 @@ export class GameService implements OnDestroy {
   }
 
   // Méthodes de sauvegarde
-  saveGame(): void {
+  saveGame(showNotification: boolean = false): void {
     const state = this.gameStateSubject.value;
     try {
       localStorage.setItem(this.SAVE_KEY, JSON.stringify(state));
-      this.notificationService.show('Jeu sauvegardé', 'success');
+      if (showNotification) {
+        this.notificationService.show('Jeu sauvegardé', 'success');
+      }
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
       this.notificationService.show(

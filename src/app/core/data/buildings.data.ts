@@ -33,12 +33,13 @@ export const BUILDINGS: { [key: string]: Building } = {
     baseProduction: 0,
     effect: {
       type: 'production_boost',
-      value: 1.15,
+      value: 1.05,
     },
     imageIndex: 2,
     unlockCost: 1000,
     unlocked: false,
     requiredBuilding: 'time_miner',
+    maxLevel: 20,
   },
   chronotron: {
     id: 'chronotron',
@@ -80,7 +81,7 @@ export const BUILDINGS: { [key: string]: Building } = {
   efficiency_hub: {
     id: 'efficiency_hub',
     name: "Centre d'Efficacité",
-    description: 'Réduit le coût de tous les bâtiments',
+    description: 'Réduit le coût de tous les bâtiments de 1% par niveau',
     baseCost: 750,
     baseProduction: 0,
     unlockCost: 5000,
@@ -88,8 +89,9 @@ export const BUILDINGS: { [key: string]: Building } = {
     requiredBuilding: 'time_compressor',
     effect: {
       type: 'cost_reduction',
-      value: 0.98,
+      value: -0.01,
     },
+    maxLevel: 75,
     imageIndex: 4,
   },
   quantum_amplifier: {

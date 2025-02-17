@@ -1221,10 +1221,6 @@ export class BuildingPanelComponent implements OnInit {
 
     const now = Date.now();
     if (now - this.lastClickTime < this.CLICK_COOLDOWN) {
-      this.notificationService.show(
-        'Action verrouillée par le créateur du temps',
-        'warning'
-      );
       return;
     }
     this.lastClickTime = now;
@@ -1329,9 +1325,18 @@ export class BuildingPanelComponent implements OnInit {
 
     switch (building.effect?.type) {
       case 'tick_rate':
-      case 'cost_reduction':
         const reductionTotal = 1 - Math.pow(value, amount);
         return Math.round(reductionTotal * 10000) / 100;
+
+      case 'cost_reduction':
+        if (value < 0) {
+          // Pour les réductions additives (valeurs négatives)
+          return Math.min(75, -value * amount * 100); // Limité à 75%
+        } else {
+          // Pour les réductions multiplicatives (valeurs positives)
+          const reductionTotal = 1 - Math.pow(value, amount);
+          return Math.round(reductionTotal * 10000) / 100;
+        }
 
       case 'production_boost':
         const boostTotal = Math.pow(value, amount);

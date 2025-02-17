@@ -1,59 +1,74 @@
-# Chronocite
+# ChronoCité 🕒
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.0.7.
+## Un jeu créé par l'IA, pour les humains
 
-## Development server
+ChronoCité est un jeu incrémental unique en son genre, entièrement conçu et développé par l'IA Claude (version 3.5 Sonnet) via l'IDE Cursor, sous la direction d'Imojen.
 
-To start a local development server, run:
+## 🎮 Le Concept
 
-```bash
-ng serve
-```
+Dans ChronoCité, vous manipulez le temps pour générer des ressources et développer votre cité temporelle. Commencez avec un simple Générateur Temporel et évoluez vers des technologies de plus en plus avancées comme le Chronotron et la Chronosphère.
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## ⚙️ Mécaniques Principales
 
-## Code scaffolding
+- **Fragments de Temps** : La ressource de base, générée par vos bâtiments
+- **Savoir Temporel** : Une ressource avancée qui se convertit en points de prestige
+- **Points de Prestige** : Permettent de débloquer des compétences puissantes
+- **Chronotron** : Un bâtiment spécial qui permet de faire des bonds dans le temps
+- **Failles Temporelles** : Apparaissent pendant le cooldown du Chronotron et réduisent son temps de recharge
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## 🏗️ Bâtiments
 
-```bash
-ng generate component component-name
-```
+1. **Générateur Temporel** : Production de base de fragments
+2. **Mineur de Temps** : Génère des fragments au clic
+3. **Accélérateur** : Boost la production globale
+4. **Chronotron** : Permet des bonds dans le temps
+5. **Compresseur Temporel** : Réduit la durée du tick
+6. **Centre d'Efficacité** : Réduit les coûts
+7. **Amplificateur Quantique** : Augmente la production
+8. **Temple des Échos** : Produit du savoir temporel
+9. **Chronosphère** : Permet de reset le cycle pour des points de prestige
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## 🌟 Caractéristiques
 
-```bash
-ng generate --help
-```
+- Interface futuriste et animations dynamiques
+- Système de progression bien équilibré
+- Multiples stratégies de développement possibles
+- Système de prestige pour des parties longue durée
+- Arbre de compétences avancé
 
-## Building
+## 🎯 Objectifs
 
-To build the project run:
+- Optimiser votre production de fragments de temps
+- Débloquer tous les bâtiments
+- Maximiser votre gain de savoir temporel
+- Accumuler des points de prestige
+- Débloquer toutes les compétences
 
-```bash
-ng build
-```
+## 💻 Techniquement
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+- Développé en Angular
+- Sauvegarde automatique
+- Responsive design
+- Optimisé pour les performances
 
-## Running unit tests
+## 🤖 Une Création de l'IA
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+Ce projet démontre les capacités créatives de l'IA moderne. Chaque aspect du jeu - du concept aux mécaniques, en passant par le code et le design - a été imaginé et implémenté par Claude 3.5 Sonnet via Cursor, sous la supervision humaine.
 
-```bash
-ng test
-```
+## 🎮 Comment Jouer
 
-## Running end-to-end tests
+1. Commencez par construire des Générateurs Temporels
+2. Déverrouillez progressivement de nouveaux bâtiments
+3. Utilisez le Chronotron pour des gains rapides
+4. Capturez les failles temporelles pendant les cooldowns
+5. Accumulez du savoir temporel
+6. Effectuez des resets stratégiques avec la Chronosphère
 
-For end-to-end (e2e) testing, run:
+## 🚀 Version
 
-```bash
-ng e2e
-```
+Actuellement en version alpha 0.2.1. Le jeu est en développement actif et reçoit régulièrement des mises à jour.
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+---
 
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Développé avec 🤖 par Claude 3.5 Sonnet via Cursor  
+Dirigé par Imojen
