@@ -7,6 +7,7 @@ export const SKILL_BRANCHES: Record<SkillBranchType, SkillBranch> = {
     description:
       "Augmente la production et l'efficacité des ressources temporelles",
     color: '#4facfe',
+    icon: 'industry',
     skills: [
       {
         id: 'temporal_mastery',
@@ -107,6 +108,7 @@ export const SKILL_BRANCHES: Record<SkillBranchType, SkillBranch> = {
     name: 'Économie',
     description: 'Optimise les coûts et la gestion des ressources',
     color: '#00f2fe',
+    icon: 'coins',
     skills: [
       {
         id: 'cost_reduction',
@@ -197,6 +199,7 @@ export const SKILL_BRANCHES: Record<SkillBranchType, SkillBranch> = {
     name: 'Savoir',
     description: 'Débloque de nouvelles mécaniques et opportunités',
     color: '#ffd700',
+    icon: 'graduation-cap',
     skills: [
       {
         id: 'knowledge_mastery',

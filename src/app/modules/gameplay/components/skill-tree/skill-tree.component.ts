@@ -7,10 +7,11 @@ import {
   SkillBranchType,
 } from '../../../../core/models/skill.model';
 import { NumberFormatPipe } from '../../../../core/pipes/number-format.pipe';
-import { map } from 'rxjs/operators';
+import { map, take } from 'rxjs/operators';
 import { GameService } from '../../../../core/services/game.service';
 import { DialogService } from '../../../../core/services/dialog.service';
-import { Observable } from 'rxjs';
+import { NotificationService } from '../../../../core/services/notification.service';
+import { Observable, of } from 'rxjs';
 
 @Component({
   selector: 'app-skill-tree',
@@ -31,82 +32,95 @@ import { Observable } from 'rxjs';
           <button class="close-button" (click)="close($event)">×</button>
         </div>
         <div class="modal-content">
-          <div class="skill-tree-container">
+          <div class="skill-branches">
             @for (branch of branches$ | async; track branch.id) {
-            <div class="skill-branch" [style.--branch-color]="branch.color">
-              <div class="branch-header">
-                <h3>{{ branch.name }}</h3>
+            <div class="branch" [style.--branch-color]="branch.color">
+              <div class="branch-header" (click)="toggleBranch(branch.id)">
+                <div class="branch-title">
+                  <i class="fas fa-{{ branch.icon }}"></i>
+                  <span>{{ branch.name }}</span>
+                </div>
+                <div class="branch-progress">
+                  {{ getBranchProgress(branch) }}
+                </div>
               </div>
-              <div class="skills-grid">
+              @if (isExpanded(branch.id)) {
+              <div class="skills-list">
                 @for (skill of branch.skills; track skill.id) {
                 <div
-                  class="skill-node"
+                  class="skill-item"
                   [class.unlocked]="skill.unlocked"
                   [class.purchased]="skill.purchased"
-                  [class.available]="isSkillAvailable(skill)"
-                  [style.--node-x]="skill.position.x"
-                  [style.--node-y]="skill.position.y"
-                  (click)="purchaseSkill(skill.id)"
-                  (mousemove)="updateTooltipPosition($event)"
+                  [class.available]="
+                    !skill.purchased && isSkillAvailable(skill)
+                  "
                 >
-                  <div class="node-connections">
-                    @if (hasRequirements(skill) && skill.id !== 'endgame') {
-                    @for (reqId of getRequirementSkills(skill); track reqId) {
-                    <div
-                      class="connection-line"
-                      [class.active]="isSkillPurchased(reqId)"
-                    ></div>
-                    } }
-                  </div>
-                  <div
-                    class="skill-icon"
-                    [class.pulse]="isSkillAvailable(skill)"
-                  >
-                    <i class="fas fa-{{ skill.icon }}"></i>
-                  </div>
-                  @if (skill.purchased) {
-                  <div class="skill-check">
-                    <i class="fas fa-check"></i>
-                  </div>
-                  }
-                  <div class="skill-tooltip">
-                    <div class="tooltip-header">
-                      <h4>{{ skill.name }}</h4>
-                      @if (!skill.purchased) {
-                      <div
-                        class="tooltip-cost"
-                        [class.affordable]="canAffordSkill(skill)"
-                      >
-                        {{ skill.cost | number : '1.0-0' }} points de prestige
+                  <div class="skill-header">
+                    <div class="skill-info">
+                      <div class="skill-name">
+                        <i class="fas fa-{{ skill.icon }}"></i>
+                        <span>{{ skill.name }}</span>
                       </div>
-                      }
-                    </div>
-                    <p class="tooltip-description">{{ skill.description }}</p>
-                    @if (skill.effects.length > 0) {
-                    <div class="tooltip-effects">
-                      @for (effect of skill.effects; track effect.type) {
-                      <div class="effect">
-                        {{ effect.description }}
+                      <div class="skill-description">
+                        {{ skill.description }}
                       </div>
-                      }
-                    </div>
-                    } @if (hasRequirements(skill)) {
-                    <div class="tooltip-requirements">
-                      <h5>Prérequis :</h5>
-                      <ul>
-                        @for (reqId of getRequirementSkills(skill); track reqId)
-                        {
-                        <li [class.met]="isSkillPurchased(reqId)">
-                          {{ getSkillName(reqId) }}
-                        </li>
+                      @if (skill.effects.length > 0) {
+                      <div class="skill-effects">
+                        @for (effect of skill.effects; track effect.type) {
+                        <div class="effect">{{ effect.description }}</div>
                         }
-                      </ul>
+                      </div>
+                      } @if (hasRequirements(skill)) {
+                      <div class="skill-requirements">
+                        <div class="requirements-title">Prérequis :</div>
+                        <div class="requirements-list">
+                          @for (reqId of getRequirementSkills(skill); track
+                          reqId) {
+                          <div
+                            class="requirement"
+                            [class.met]="isSkillPurchased(reqId)"
+                          >
+                            {{ getSkillName(reqId) }}
+                          </div>
+                          }
+                        </div>
+                      </div>
+                      }
                     </div>
-                    }
+                    <div class="skill-actions">
+                      @if (skill.purchased) {
+                      <div class="skill-status purchased">
+                        <i class="fas fa-check"></i>
+                        <span>Acquis</span>
+                      </div>
+                      } @else if (!skill.unlocked) {
+                      <div class="skill-status locked">
+                        <i class="fas fa-lock"></i>
+                        <span>Verrouillé</span>
+                      </div>
+                      } @else {
+                      <div
+                        class="skill-cost"
+                        [class.not-affordable]="!canAffordSkill(skill)"
+                      >
+                        <i class="fas fa-star"></i>
+                        {{ skill.cost | number : '1.0-0' }}
+                      </div>
+                      <button
+                        class="purchase-button"
+                        [disabled]="!isSkillAvailable(skill)"
+                        (click)="purchaseSkill(skill.id)"
+                      >
+                        <i class="fas fa-unlock"></i>
+                        <span>Débloquer</span>
+                      </button>
+                      }
+                    </div>
                   </div>
                 </div>
                 }
               </div>
+              }
             </div>
             }
           </div>
@@ -126,7 +140,7 @@ import { Observable } from 'rxjs';
         display: flex;
         justify-content: center;
         align-items: center;
-        z-index: 1000;
+        z-index: 2000;
       }
 
       .modal-container {
@@ -134,21 +148,24 @@ import { Observable } from 'rxjs';
         border-radius: 12px;
         width: 95%;
         height: 95%;
-        max-width: 1500px;
+        max-width: 1200px;
         position: relative;
         display: flex;
         flex-direction: column;
         border: 1px solid rgba(255, 255, 255, 0.1);
-        overflow: visible;
+        overflow: hidden;
+        z-index: 2001;
       }
 
       .modal-header {
-        padding: 1rem;
+        padding: 1.5rem;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 1rem;
+        background: rgba(13, 17, 23, 0.98);
+        z-index: 2002;
       }
 
       .header-content {
@@ -163,8 +180,6 @@ import { Observable } from 'rxjs';
         color: #fff;
         font-size: 1.6rem;
         font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 2px;
       }
 
       .prestige-points {
@@ -177,10 +192,6 @@ import { Observable } from 'rxjs';
         background: rgba(255, 215, 0, 0.1);
         border-radius: 4px;
         border: 1px solid rgba(255, 215, 0, 0.2);
-      }
-
-      .prestige-points i {
-        font-size: 1.2rem;
       }
 
       .close-button {
@@ -196,7 +207,6 @@ import { Observable } from 'rxjs';
         justify-content: center;
         border-radius: 4px;
         transition: all 0.2s ease;
-        flex-shrink: 0;
       }
 
       .close-button:hover {
@@ -206,742 +216,534 @@ import { Observable } from 'rxjs';
 
       .modal-content {
         flex: 1;
-        overflow: visible;
+        overflow-y: auto;
         padding: 2rem;
-        background: radial-gradient(
-          circle at center,
-          rgba(30, 40, 50, 0.5) 0%,
-          rgba(10, 15, 20, 0.5) 100%
-        );
       }
 
-      .skill-tree-container {
+      .skill-branches {
         display: flex;
-        gap: 4rem;
-        justify-content: center;
-        min-height: 100%;
-        padding: 2rem;
+        flex-direction: column;
+        gap: 2rem;
+        max-width: 900px;
+        margin: 0 auto;
       }
 
-      .skill-branch {
-        position: relative;
-        width: 300px;
+      .branch {
+        background: rgba(30, 36, 44, 0.8);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        overflow: hidden;
       }
 
       .branch-header {
-        text-align: center;
-        margin-bottom: 3rem;
-      }
-
-      .branch-header h3 {
-        color: var(--branch-color);
-        font-size: 1.4rem;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        text-shadow: 0 0 10px var(--branch-color);
-      }
-
-      .skills-grid {
-        position: relative;
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 3rem;
-        align-items: center;
-      }
-
-      .skill-node {
-        position: relative;
-        width: 60px;
-        height: 69px;
-        margin: 0 auto;
+        padding: 1.5rem;
+        background: rgba(13, 17, 23, 0.5);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         cursor: pointer;
-        opacity: 0.5;
-        transition: all 0.3s ease;
-        filter: grayscale(1) brightness(0.3);
-        position: relative;
-        z-index: 100;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background-color 0.2s ease;
       }
 
-      .skill-node:hover {
-        z-index: 100;
+      .branch-header:hover {
+        background: rgba(13, 17, 23, 0.7);
       }
 
-      .skill-node.unlocked {
-        opacity: 1;
-        filter: grayscale(0) brightness(1);
-      }
-
-      .skill-node.available {
-        opacity: 1;
-        filter: grayscale(0) brightness(1);
-      }
-
-      .skill-node.available .skill-icon {
-        box-shadow: 0 0 20px var(--branch-color);
-      }
-
-      .skill-node.available .skill-icon::before {
-        opacity: 0.4;
-      }
-
-      .skill-node.available .skill-icon::after {
-        opacity: 0.6;
-        filter: blur(3px);
-      }
-
-      .skill-node.available .skill-icon i {
-        opacity: 1;
-        filter: drop-shadow(0 0 12px var(--branch-color)) brightness(1.5);
-        animation: glow 2s ease-in-out infinite alternate;
-      }
-
-      @keyframes glow {
-        from {
-          filter: drop-shadow(0 0 12px var(--branch-color)) brightness(1.5);
-        }
-        to {
-          filter: drop-shadow(0 0 20px var(--branch-color)) brightness(2);
-        }
-      }
-
-      .skill-node.available:hover .skill-icon {
-        transform: translateY(-3px);
-        box-shadow: 0 0 30px var(--branch-color);
-      }
-
-      .skill-node.available:hover .skill-icon::before {
-        opacity: 0.6;
-      }
-
-      .skill-node.available:hover .skill-icon::after {
-        opacity: 0.8;
-        filter: blur(4px);
-      }
-
-      .skill-node.available:hover .skill-icon i {
-        transform: scale(1.15);
-        animation: glowHover 1s ease-in-out infinite alternate;
-      }
-
-      @keyframes glowHover {
-        from {
-          filter: drop-shadow(0 0 15px var(--branch-color)) brightness(1.8);
-        }
-        to {
-          filter: drop-shadow(0 0 25px var(--branch-color)) brightness(2.2);
-        }
-      }
-
-      .skill-node.purchased {
-        opacity: 1;
-        filter: grayscale(0) brightness(1.3);
-      }
-
-      .skill-node.purchased .skill-icon {
-        background: rgba(0, 0, 0, 0.6);
-        box-shadow: 0 0 20px var(--branch-color);
-      }
-
-      .skill-node.purchased .skill-icon::before {
-        opacity: 0.4;
-        animation: shimmer 3s linear infinite;
-      }
-
-      .skill-node.purchased .skill-icon::after {
-        opacity: 0.5;
-        filter: blur(3px);
-      }
-
-      .skill-node.purchased .skill-icon i {
-        color: #fff;
-        opacity: 1;
-        filter: drop-shadow(0 0 6px var(--branch-color)) brightness(1.2);
-      }
-
-      .skill-node.purchased:hover .skill-icon {
-        transform: translateY(-3px);
-        background: rgba(0, 0, 0, 0.7);
-        box-shadow: 0 0 25px var(--branch-color);
-      }
-
-      .skill-node.purchased:hover .skill-icon::before {
-        opacity: 0.5;
-      }
-
-      .skill-node.purchased:hover .skill-icon::after {
-        opacity: 0.6;
-        filter: blur(4px);
-      }
-
-      .skill-node.purchased:hover .skill-icon i {
-        transform: scale(1.15);
-        filter: drop-shadow(0 0 10px var(--branch-color)) brightness(1.4);
-      }
-
-      @keyframes shimmer {
-        0% {
-          opacity: 0.3;
-          filter: brightness(1);
-        }
-        50% {
-          opacity: 0.6;
-          filter: brightness(1.3);
-        }
-        100% {
-          opacity: 0.3;
-          filter: brightness(1);
-        }
-      }
-
-      .node-connections {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        z-index: 0;
-      }
-
-      .connection-line {
-        position: absolute;
-        width: 4px;
-        height: 3rem;
-        background: rgba(255, 255, 255, 0.1);
-        left: 50%;
-        bottom: 100%;
-        transform: translateX(-50%);
-        transition: all 0.3s ease;
-      }
-
-      .connection-line.active {
-        background: var(--branch-color);
-        box-shadow: 0 0 10px var(--branch-color);
-      }
-
-      .skill-icon {
-        position: relative;
-        width: 100%;
-        height: 100%;
-        background: rgba(10, 13, 18, 0.95);
-        clip-path: polygon(
-          50% 0%,
-          100% 25%,
-          100% 75%,
-          50% 100%,
-          0% 75%,
-          0% 25%
-        );
+      .branch-title {
         display: flex;
         align-items: center;
-        justify-content: center;
-        transition: all 0.3s ease;
-        z-index: 1;
+        gap: 1rem;
+        color: var(--branch-color);
+        font-size: 1.2rem;
+        font-weight: 500;
       }
 
-      .skill-node:hover .skill-icon {
-        transform: translateY(-2px);
+      .branch-title i {
+        font-size: 1.1rem;
+        opacity: 0.9;
       }
 
-      .skill-icon::before {
-        content: '';
-        position: absolute;
-        inset: 1px;
-        background: linear-gradient(
-          45deg,
-          transparent 0%,
-          var(--branch-color) 45%,
-          var(--branch-color) 55%,
-          transparent 100%
-        );
-        opacity: 0.05;
-        clip-path: polygon(
-          50% 0%,
-          100% 25%,
-          100% 75%,
-          50% 100%,
-          0% 75%,
-          0% 25%
-        );
-        transition: all 0.3s ease;
+      .branch-progress {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.9rem;
       }
 
-      .skill-node:hover .skill-icon::before {
-        opacity: 0.15;
-        filter: blur(2px);
+      .skills-list {
+        padding: 0;
       }
 
-      .skill-icon::after {
+      .skill-item {
+        padding: 1.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        transition: all 0.2s ease;
+        position: relative;
+        background: rgba(30, 36, 44, 0.8);
+      }
+
+      /* Style pour les skills verrouillés */
+      .skill-item:not(.unlocked) {
+        background: rgba(13, 17, 23, 0.95);
+        border: 1px solid rgba(255, 68, 68, 0.3);
+      }
+
+      .skill-item:not(.unlocked)::before {
         content: '';
         position: absolute;
         inset: 0;
-        background: linear-gradient(
-          to bottom,
-          transparent,
-          var(--branch-color)
-        );
-        opacity: 0.1;
-        clip-path: polygon(
-          50% 0%,
-          100% 25%,
-          100% 75%,
-          50% 100%,
-          0% 75%,
-          0% 25%
-        );
-        filter: blur(4px);
-        transition: all 0.3s ease;
-      }
-
-      .skill-node:hover .skill-icon::after {
-        opacity: 0.2;
-        filter: blur(3px);
-      }
-
-      .skill-node.purchased .skill-icon {
-        background: rgba(0, 0, 0, 0.6);
-      }
-
-      .skill-node.purchased:hover .skill-icon {
-        transform: translateY(-2px);
         background: rgba(0, 0, 0, 0.7);
-      }
-
-      .skill-node.purchased .skill-icon::before {
-        opacity: 0.3;
-        animation: shimmer 3s linear infinite;
-      }
-
-      .skill-node.purchased:hover .skill-icon::before {
-        opacity: 0.4;
-      }
-
-      .skill-node.purchased .skill-icon::after {
-        opacity: 0.4;
-      }
-
-      .skill-node.purchased:hover .skill-icon::after {
-        opacity: 0.5;
-        filter: blur(2px);
-      }
-
-      .skill-icon i {
-        color: var(--branch-color);
-        font-size: 1.5rem;
-        transition: all 0.3s ease;
-        z-index: 2;
-        opacity: 0.8;
-        filter: drop-shadow(0 0 2px var(--branch-color));
-      }
-
-      .skill-node:hover .skill-icon i {
-        transform: scale(1.1);
-        opacity: 1;
-        filter: drop-shadow(0 0 4px var(--branch-color));
-      }
-
-      .skill-node.purchased .skill-icon i {
-        color: #fff;
-        opacity: 1;
-        filter: drop-shadow(0 0 4px var(--branch-color));
-      }
-
-      .skill-node.purchased:hover .skill-icon i {
-        transform: scale(1.1);
-        filter: drop-shadow(0 0 6px var(--branch-color));
-      }
-
-      @keyframes shimmer {
-        0% {
-          opacity: 0.2;
-        }
-        50% {
-          opacity: 0.4;
-        }
-        100% {
-          opacity: 0.2;
-        }
-      }
-
-      .skill-tooltip {
-        position: absolute;
-        top: 50%;
-        left: calc(100% + 20px);
-        transform: translateY(-50%);
-        background: rgba(0, 0, 0, 0.95);
-        border: 1px solid var(--branch-color);
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-        border-radius: 8px;
-        padding: 1.5rem;
-        width: 350px;
         pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.2s ease;
-        z-index: 1001;
-        visibility: hidden;
       }
 
-      .skill-branch:last-child .skill-node .skill-tooltip {
-        left: auto;
-        right: calc(100% + 20px);
+      .skill-item:not(.unlocked) .skill-name,
+      .skill-item:not(.unlocked) .skill-description,
+      .skill-item:not(.unlocked) .skill-effects,
+      .skill-item:not(.unlocked) .skill-requirements {
+        opacity: 0.4;
       }
 
-      .skill-node:hover .skill-tooltip {
-        opacity: 1;
-        visibility: visible;
+      /* Style pour les skills disponibles à l'achat */
+      .skill-item.available {
+        background: rgba(30, 36, 44, 0.95);
+        border: 1px solid rgba(255, 215, 0, 0.3);
+        box-shadow: inset 0 0 20px rgba(255, 215, 0, 0.05);
       }
 
-      .tooltip-header {
-        margin-bottom: 1.5rem;
-        border-bottom: 1px solid rgba(var(--branch-color), 0.3);
-        padding-bottom: 1rem;
+      .skill-item.available .skill-name {
+        color: #ffd700;
+        text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
       }
 
-      .tooltip-header h4 {
-        color: var(--branch-color);
-        margin: 0 0 0.75rem;
-        font-size: 1.3rem;
+      .skill-item.available .effect {
+        border: 1px solid rgba(255, 215, 0, 0.2);
+        background: rgba(255, 215, 0, 0.05);
+        color: #ffd700;
+      }
+
+      /* Style pour les skills achetés */
+      .skill-item.purchased {
+        background: rgba(30, 36, 44, 0.95);
+        border: 1px solid rgba(74, 222, 128, 0.3);
+        box-shadow: inset 0 0 20px rgba(74, 222, 128, 0.05);
+      }
+
+      .skill-item.purchased .skill-name {
+        color: #4ade80;
+        text-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
+      }
+
+      .skill-item.purchased .effect {
+        border: 1px solid rgba(74, 222, 128, 0.2);
+        background: rgba(74, 222, 128, 0.05);
+        color: #4ade80;
+      }
+
+      /* Boutons et statuts */
+      .skill-status.locked {
+        background: rgba(255, 68, 68, 0.15);
+        color: #ff4444;
+        border: 1px solid rgba(255, 68, 68, 0.3);
         font-weight: 600;
-        text-shadow: 0 0 10px var(--branch-color);
+        text-transform: uppercase;
         letter-spacing: 1px;
+        padding: 0.5rem 1rem;
       }
 
-      .tooltip-cost {
+      .skill-status.purchased {
+        background: rgba(74, 222, 128, 0.15);
+        color: #4ade80;
+        border: 1px solid rgba(74, 222, 128, 0.3);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        padding: 0.5rem 1rem;
+      }
+
+      .purchase-button {
+        background: rgba(255, 215, 0, 0.1);
+        border: 1px solid rgba(255, 215, 0, 0.3);
+        color: #ffd700;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        color: #ff4444;
-        font-size: 1rem;
-        transition: all 0.3s ease;
-        padding: 0.5rem;
-        background: rgba(255, 68, 68, 0.1);
-        border-radius: 4px;
-        border: 1px solid rgba(255, 68, 68, 0.2);
       }
 
-      .tooltip-cost.affordable {
-        color: #ffd700;
-        background: rgba(255, 215, 0, 0.1);
-        border: 1px solid rgba(255, 215, 0, 0.2);
+      .purchase-button:hover:not(:disabled) {
+        background: rgba(255, 215, 0, 0.2);
+        transform: translateY(-1px);
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
       }
 
-      .tooltip-description {
-        color: rgba(255, 255, 255, 0.9);
-        font-size: 1rem;
-        margin-bottom: 1.5rem;
-        line-height: 1.6;
-        padding: 0.5rem;
+      .purchase-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
         background: rgba(255, 255, 255, 0.05);
-        border-radius: 4px;
+        border-color: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.3);
       }
 
-      .tooltip-effects {
-        margin-bottom: 1.5rem;
-        padding: 1rem;
-        background: rgba(var(--branch-color), 0.1);
-        border-radius: 4px;
-        border: 1px solid rgba(var(--branch-color), 0.2);
+      .purchase-button i {
+        font-size: 0.9rem;
       }
 
-      .effect {
-        color: var(--branch-color);
+      .skill-status {
+        padding: 0.4rem 0.8rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+
+      .skill-status.locked {
+        background: rgba(255, 68, 68, 0.15);
+        color: #ff4444;
+        border: 1px solid rgba(255, 68, 68, 0.3);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 0.5rem 1rem;
+      }
+
+      .skill-status.locked i {
         font-size: 1rem;
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 0.6;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.6;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .modal-container {
+          width: 100%;
+          height: 100%;
+          border-radius: 0;
+          margin-top: 60px;
+        }
+
+        .modal-header {
+          padding: 1rem;
+        }
+
+        .modal-content {
+          padding: 1rem;
+        }
+
+        .skill-branches {
+          gap: 1rem;
+        }
+
+        .branch-header {
+          padding: 1rem;
+        }
+
+        .skill-item {
+          padding: 1rem;
+        }
+
+        .skill-header {
+          flex-direction: column;
+        }
+
+        .skill-actions {
+          width: 100%;
+          justify-content: space-between;
+          margin-top: 1rem;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .modal-container {
+          margin-top: 50px;
+        }
+
+        .header-content {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 1rem;
+        }
+
+        h2 {
+          font-size: 1.3rem;
+        }
+
+        .branch-title {
+          font-size: 1.1rem;
+        }
+
+        .skill-name {
+          font-size: 1rem;
+        }
+
+        .skill-description {
+          font-size: 0.9rem;
+        }
+      }
+
+      .skill-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        position: relative;
+      }
+
+      .skill-info {
+        flex: 1;
+      }
+
+      .skill-name {
+        color: #fff;
+        font-size: 1.1rem;
+        font-weight: 500;
         margin-bottom: 0.5rem;
         display: flex;
         align-items: center;
         gap: 0.5rem;
       }
 
-      .effect:before {
-        content: '✦';
+      .skill-name i {
         color: var(--branch-color);
-        font-size: 1.2rem;
-      }
-
-      .tooltip-requirements {
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        padding-top: 1rem;
-        margin-top: 1rem;
-      }
-
-      .tooltip-requirements h5 {
-        color: rgba(255, 255, 255, 0.8);
         font-size: 1rem;
-        margin: 0 0 1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
       }
 
-      .tooltip-requirements h5:before {
-        content: '!';
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 20px;
-        height: 20px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 50%;
-        font-size: 0.8rem;
+      .skill-description {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.95rem;
+        line-height: 1.5;
+        margin-bottom: 1rem;
       }
 
-      .tooltip-requirements ul {
-        list-style: none;
-        padding: 0;
-        margin: 0;
+      .skill-effects {
         display: flex;
         flex-direction: column;
         gap: 0.5rem;
       }
 
-      .tooltip-requirements li {
-        color: rgba(255, 255, 255, 0.6);
-        font-size: 0.95rem;
-        position: relative;
-        padding: 0.5rem;
-        padding-left: 1.5rem;
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 4px;
-        transition: all 0.3s ease;
-      }
-
-      .tooltip-requirements li::before {
-        content: '×';
-        position: absolute;
-        left: 0.5rem;
-        color: #ff4444;
-        font-weight: bold;
-      }
-
-      .tooltip-requirements li.met {
+      .effect {
         color: var(--branch-color);
-        background: rgba(var(--branch-color), 0.1);
-      }
-
-      .tooltip-requirements li.met::before {
-        content: '✓';
-        color: #4facfe;
-      }
-
-      @keyframes scan {
-        0% {
-          transform: translateY(-75%) rotate(45deg);
-        }
-        100% {
-          transform: translateY(75%) rotate(45deg);
-        }
-      }
-
-      @keyframes pulse {
-        0% {
-          transform: scale(1);
-          box-shadow: 0 0 0 0 rgba(var(--branch-color), 0.7);
-        }
-        70% {
-          transform: scale(1.05);
-          box-shadow: 0 0 0 10px rgba(var(--branch-color), 0);
-        }
-        100% {
-          transform: scale(1);
-          box-shadow: 0 0 0 0 rgba(var(--branch-color), 0);
-        }
-      }
-
-      .skill-icon.pulse {
-        animation: pulse 2s infinite;
-      }
-
-      .node-connections .fa-check {
-        position: absolute;
-        right: -8px;
-        bottom: -8px;
-        color: #4eff4e;
-        background: rgba(0, 0, 0, 0.9);
-        border: 2px solid #4eff4e;
-        border-radius: 50%;
-        padding: 4px;
         font-size: 0.9rem;
-        z-index: 10;
-        box-shadow: 0 0 10px #4eff4e, inset 0 0 5px #4eff4e;
-        animation: tickerGlow 2s infinite ease-in-out;
-      }
-
-      @keyframes tickerGlow {
-        0% {
-          box-shadow: 0 0 10px #4eff4e, inset 0 0 5px #4eff4e;
-        }
-        50% {
-          box-shadow: 0 0 15px #4eff4e, inset 0 0 8px #4eff4e;
-        }
-        100% {
-          box-shadow: 0 0 10px #4eff4e, inset 0 0 5px #4eff4e;
-        }
-      }
-
-      .skill-check {
-        position: absolute;
-        right: -8px;
-        bottom: -4px;
-        color: #4eff4e;
-        background: rgba(0, 0, 0, 0.9);
-        border: 2px solid #4eff4e;
-        border-radius: 50%;
-        width: 28px;
-        height: 28px;
         display: flex;
         align-items: center;
-        justify-content: center;
-        z-index: 200;
-        box-shadow: 0 0 10px #4eff4e, inset 0 0 5px #4eff4e;
-        animation: tickerGlow 2s infinite ease-in-out;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
       }
 
-      .skill-check i {
+      .effect:before {
+        content: '✦';
         font-size: 1rem;
+      }
+
+      .skill-requirements {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .requirements-title {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .requirements-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .requirement {
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 0.85rem;
+        padding: 0.3rem 0.6rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+      }
+
+      .requirement.met {
+        color: #4ade80;
+        background: rgba(74, 222, 128, 0.1);
+      }
+
+      .requirement.met:before {
+        content: '✓';
+      }
+
+      .requirement:not(.met):before {
+        content: '×';
+        color: #ff4444;
+      }
+
+      .skill-actions {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+      }
+
+      .skill-cost {
+        color: #ffd700;
+        font-size: 0.9rem;
+        padding: 0.4rem 0.8rem;
+        background: rgba(255, 215, 0, 0.1);
+        border-radius: 4px;
+        border: 1px solid rgba(255, 215, 0, 0.2);
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+
+      .skill-cost.not-affordable {
+        color: #ff4444;
+        background: rgba(255, 68, 68, 0.1);
+        border-color: rgba(255, 68, 68, 0.2);
       }
     `,
   ],
 })
 export class SkillTreeComponent implements OnInit {
   @Output() closeModal = new EventEmitter<void>();
+
+  private expandedBranches = new Set<SkillBranchType>();
   branches$: Observable<SkillBranch[]>;
   prestigePoints$: Observable<number>;
-  private skillBranchesValue: Record<SkillBranchType, SkillBranch> | null =
-    null;
 
   constructor(
     private skillService: SkillService,
     private gameService: GameService,
-    private dialogService: DialogService
+    private dialogService: DialogService,
+    private notificationService: NotificationService
   ) {
-    this.branches$ = this.skillService.getSkillBranches().pipe(
-      map((branches) => {
-        this.skillBranchesValue = branches;
-        return Object.values(branches);
-      })
-    );
-
+    this.branches$ = this.skillService
+      .getSkillBranches()
+      .pipe(map((branches) => Object.values(branches)));
     this.prestigePoints$ = this.gameService.getPrestigePoints$();
   }
 
-  ngOnInit(): void {
-    // Initialisation si nécessaire
+  ngOnInit() {
+    // Les branches sont maintenant toutes fermées par défaut
   }
 
-  close(event: MouseEvent): void {
-    if (
-      (event.target as HTMLElement).classList.contains('overlay') ||
-      (event.target as HTMLElement).classList.contains('close-button')
-    ) {
-      this.closeModal.emit();
-    }
-  }
-
-  async purchaseSkill(skillId: string): Promise<void> {
-    const skill = this.findSkill(skillId);
-    if (!skill) return;
-
-    if (!this.canAffordSkill(skill)) {
-      const currentPoints =
-        this.gameService.getGameState().resources.prestigePoints;
-      const missingPoints = skill.cost - currentPoints;
-
-      await this.dialogService.confirm({
-        title: 'Points insuffisants',
-        message: `Il vous manque ${missingPoints} points de prestige pour débloquer cette compétence.`,
-        confirmText: 'OK',
-        type: 'warning',
-      });
-      return;
-    }
-
-    const confirmed = await this.dialogService.confirm({
-      title: "Confirmer l'achat",
-      message: `Voulez-vous débloquer "${skill.name}" pour ${skill.cost} points de prestige ?`,
-      confirmText: 'Débloquer',
-      cancelText: 'Annuler',
-      type: 'info',
-    });
-
-    if (confirmed) {
-      this.skillService.purchaseSkill(skillId);
+  toggleBranch(branchId: SkillBranchType) {
+    if (this.expandedBranches.has(branchId)) {
+      this.expandedBranches.delete(branchId);
+    } else {
+      this.expandedBranches.add(branchId);
     }
   }
 
-  private findSkill(skillId: string): Skill | null {
-    if (!this.skillBranchesValue) return null;
-
-    for (const branch of Object.values(this.skillBranchesValue)) {
-      const skill = branch.skills.find((s) => s.id === skillId);
-      if (skill) return skill;
-    }
-    return null;
+  isExpanded(branchId: SkillBranchType): boolean {
+    return this.expandedBranches.has(branchId);
   }
 
-  isSkillPurchased(skillId: string): boolean {
-    if (!this.skillBranchesValue) return false;
-
-    for (const branch of Object.values(this.skillBranchesValue)) {
-      const skill = branch.skills.find((s: Skill) => s.id === skillId);
-      if (skill?.purchased) return true;
-    }
-    return false;
-  }
-
-  getSkillName(skillId: string): string {
-    if (!this.skillBranchesValue) return skillId;
-
-    for (const branch of Object.values(this.skillBranchesValue)) {
-      const skill = branch.skills.find((s: Skill) => s.id === skillId);
-      if (skill) return skill.name;
-    }
-    return skillId;
+  getBranchProgress(branch: SkillBranch): string {
+    const purchasedSkills = branch.skills.filter(
+      (skill) => skill.purchased
+    ).length;
+    const totalSkills = branch.skills.length;
+    return `${purchasedSkills}/${totalSkills}`;
   }
 
   hasRequirements(skill: Skill): boolean {
-    if (!skill?.requirements?.skills) return false;
-    return skill.requirements.skills.length > 0;
+    return Boolean(skill.requirements?.skills?.length);
   }
 
   getRequirementSkills(skill: Skill): string[] {
-    if (!skill?.requirements?.skills) return [];
-    return skill.requirements.skills;
+    return skill.requirements?.skills || [];
   }
 
-  isSkillAvailable(skill: Skill): boolean {
-    return (
-      skill.unlocked &&
-      !skill.purchased &&
-      this.canAffordSkill(skill) &&
-      this.areRequirementsMet(skill)
-    );
+  getSkillName(skillId: string): string {
+    let name = skillId;
+    this.branches$.pipe(take(1)).subscribe((branches) => {
+      for (const branch of branches) {
+        const skill = branch.skills.find((s) => s.id === skillId);
+        if (skill) {
+          name = skill.name;
+          break;
+        }
+      }
+    });
+    return name;
+  }
+
+  isSkillPurchased(skillId: string): boolean {
+    let purchased = false;
+    this.branches$.pipe(take(1)).subscribe((branches) => {
+      for (const branch of branches) {
+        const skill = branch.skills.find((s) => s.id === skillId);
+        if (skill?.purchased) {
+          purchased = true;
+          break;
+        }
+      }
+    });
+    return purchased;
   }
 
   canAffordSkill(skill: Skill): boolean {
-    const gameState = this.gameService.getGameState();
-    return gameState.resources.prestigePoints >= skill.cost;
+    let canAfford = false;
+    this.prestigePoints$.pipe(take(1)).subscribe((points) => {
+      canAfford = points >= skill.cost;
+    });
+    return canAfford;
   }
 
-  areRequirementsMet(skill: Skill): boolean {
+  isSkillAvailable(skill: Skill): boolean {
+    if (!skill.unlocked || skill.purchased) return false;
+    if (!this.canAffordSkill(skill)) return false;
     if (!skill.requirements?.skills) return true;
+
     return skill.requirements.skills.every((reqId) =>
       this.isSkillPurchased(reqId)
     );
   }
 
-  updateTooltipPosition(event: MouseEvent): void {
-    const host = event.currentTarget as HTMLElement;
-    if (!host) return;
+  purchaseSkill(skillId: string): void {
+    const success = this.skillService.purchaseSkill(skillId);
+    of(success).subscribe({
+      next: (result: boolean) => {
+        if (!result) {
+          this.notificationService.show(
+            "Impossible d'acheter cette compétence. Vérifiez que vous avez assez de points et que les prérequis sont remplis.",
+            'error'
+          );
+        }
+      },
+      error: (error: unknown) => {
+        this.notificationService.show(
+          "Une erreur est survenue lors de l'achat de la compétence.",
+          'error'
+        );
+      },
+    });
+  }
 
-    const rect = host.getBoundingClientRect();
-    const x = rect.left + rect.width;
-    const y = rect.top + rect.height / 2;
-
-    // Mise à jour des variables CSS
-    host.style.setProperty('--tooltip-x', `${x}px`);
-    host.style.setProperty('--tooltip-y', `${y}px`);
-
-    // Pour la dernière colonne, on positionne à gauche
-    const isLastColumn = host.closest('.skill-branch:last-child') !== null;
-    if (isLastColumn) {
-      host.style.setProperty('--tooltip-x', `${rect.left}px`);
+  close(event: MouseEvent) {
+    if (
+      event.target instanceof Element &&
+      (event.target.classList.contains('overlay') ||
+        event.target.classList.contains('close-button'))
+    ) {
+      this.closeModal.emit();
     }
   }
 }

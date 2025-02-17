@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   NgZone,
+  OnInit,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GameService } from '../../../../core/services/game.service';
@@ -13,6 +14,7 @@ import { BUILDINGS } from '../../../../core/data/buildings.data';
 import { GameState } from '../../../../core/models/game-state.model';
 import { map } from 'rxjs/operators';
 import { DialogService } from '../../../../core/services/dialog.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 
 interface BuildingWithProduction extends Building {
   amount: number;
@@ -25,7 +27,7 @@ interface BuildingWithProduction extends Building {
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="buildings-grid">
+    <div class="buildings-grid" (keydown.enter)="$event.preventDefault()">
       @for (building of buildings$ | async; track building.id) {
       <div
         class="building-card"
@@ -52,9 +54,12 @@ interface BuildingWithProduction extends Building {
           <p>{{ building.description }}</p>
           @if (building.isClickable && building.unlocked) {
           <button
+            #miningButton
+            type="button"
             class="mining-button"
             [class.cooldown]="building.id === 'chronotron' && isOnCooldown()"
             (click)="mineTimeFragment($event, building)"
+            [attr.tabindex]="-1"
           >
             <div class="mining-button-content">
               @if (building.id === 'chronotron' && isOnCooldown()) {
@@ -73,7 +78,8 @@ interface BuildingWithProduction extends Building {
               }}</span>
               }
             </div>
-            @for (floatingNumber of floatingNumbers; track floatingNumber.id) {
+            @if (building.id === 'time_miner') { @for (floatingNumber of
+            floatingNumbers; track floatingNumber.id) {
             <div
               class="floating-number"
               [style.--x]="floatingNumber.x + 'px'"
@@ -81,7 +87,7 @@ interface BuildingWithProduction extends Building {
             >
               +{{ floatingNumber.value | number : '1.1-1' }}
             </div>
-            }
+            } }
           </button>
           }
         </div>
@@ -136,7 +142,10 @@ interface BuildingWithProduction extends Building {
             } @else if (building.effect?.type === 'resource_multiplier') {
             <div class="stat-label">Multiplicateur de ressources</div>
             <div class="stat-value">
-              ×{{ building.effect?.value || 1 | number : '1.1-1' }}
+              +{{
+                calculateEffectValue(building.effect?.value, building)
+                  | number : '1.1-1'
+              }}%
             </div>
             } @else if (building.effect?.type === 'resource_production') {
             <div class="stat-label">Production de savoir</div>
@@ -236,9 +245,42 @@ interface BuildingWithProduction extends Building {
     `
       .buildings-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(400px, 400px));
         gap: 1.5rem;
         padding: 1rem;
+        justify-content: center;
+      }
+
+      @media (max-width: 1024px) {
+        .buildings-grid {
+          grid-template-columns: minmax(400px, 400px);
+          gap: 1rem;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .buildings-grid {
+          grid-template-columns: minmax(400px, 400px);
+          padding: 0.75rem;
+        }
+
+        .building-card {
+          font-size: 0.9rem;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .buildings-grid {
+          grid-template-columns: 1fr;
+          gap: 0.75rem;
+          padding: 0.5rem;
+        }
+
+        .building-card {
+          max-width: 400px;
+          margin: 0 auto;
+          width: 100%;
+        }
       }
 
       h2 {
@@ -1062,7 +1104,7 @@ interface BuildingWithProduction extends Building {
     `,
   ],
 })
-export class BuildingPanelComponent {
+export class BuildingPanelComponent implements OnInit {
   resources$: Observable<GameState['resources']>;
   buildings$: Observable<BuildingWithProduction[]>;
   selectedBuilding: Building | null = null;
@@ -1071,6 +1113,8 @@ export class BuildingPanelComponent {
   floatingNumbers: Array<{ id: number; value: number; x: number; y: number }> =
     [];
   private nextId = 0;
+  private lastClickTime = 0;
+  private readonly CLICK_COOLDOWN = 200; // 200ms de délai minimum entre les clics
 
   private readonly BUILDING_IMAGE_MAP: { [key: string]: number } = {
     generator: 1,
@@ -1087,12 +1131,25 @@ export class BuildingPanelComponent {
     private gameService: GameService,
     private cdr: ChangeDetectorRef,
     private ngZone: NgZone,
-    private dialogService: DialogService
+    private dialogService: DialogService,
+    private notificationService: NotificationService
   ) {
     this.resources$ = this.gameService.gameState$.pipe(
       map((state) => state.resources)
     );
     this.buildings$ = this.gameService.getAllBuildings$();
+  }
+
+  ngOnInit() {
+    // Empêcher le comportement par défaut de la touche Entrée sur tous les boutons de minage
+    document.addEventListener('keydown', (event: KeyboardEvent) => {
+      if (event.key === 'Enter') {
+        const miningButtons = document.querySelectorAll('.mining-button');
+        if (miningButtons.length > 0) {
+          event.preventDefault();
+        }
+      }
+    });
   }
 
   purchase(buildingId: string): void {
@@ -1154,11 +1211,25 @@ export class BuildingPanelComponent {
   }
 
   async mineTimeFragment(
-    event: MouseEvent,
+    event: MouseEvent | KeyboardEvent,
     building: BuildingWithProduction
   ): Promise<void> {
+    // Ne traiter que les clics de souris
+    if (!(event instanceof MouseEvent)) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - this.lastClickTime < this.CLICK_COOLDOWN) {
+      this.notificationService.show(
+        'Action verrouillée par le créateur du temps',
+        'warning'
+      );
+      return;
+    }
+    this.lastClickTime = now;
+
     if (building.id === 'chronotron') {
-      // Vérifier si le Chronotron est en cooldown
       if (this.isOnCooldown()) {
         return;
       }
@@ -1168,7 +1239,6 @@ export class BuildingPanelComponent {
       const tickRate = this.gameService.getCurrentTickRate();
       const numberOfTicks = Math.floor((jumpDuration * 1000) / tickRate);
 
-      // Calculer la production totale de tous les bâtiments
       let totalProduction = 0;
       const buildings = await firstValueFrom(
         this.gameService.getAllBuildings$()
@@ -1203,28 +1273,31 @@ export class BuildingPanelComponent {
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    this.ngZone.runOutsideAngular(() => {
-      const id = this.nextId++;
-      const value = this.getMiningValue(building);
+    // N'afficher les nombres flottants que pour le Mineur de temps
+    if (building.id === 'time_miner') {
+      this.ngZone.runOutsideAngular(() => {
+        const id = this.nextId++;
+        const value = this.getMiningValue(building);
 
-      this.floatingNumbers.push({ id, value, x, y });
-      this.gameService.mineTimeFragment();
+        this.floatingNumbers.push({ id, value, x, y });
+        this.gameService.mineTimeFragment();
 
-      // Forcer la détection des changements
-      this.ngZone.run(() => {
-        this.cdr.detectChanges();
-      });
-
-      // Nettoyer après l'animation
-      setTimeout(() => {
         this.ngZone.run(() => {
-          this.floatingNumbers = this.floatingNumbers.filter(
-            (n) => n.id !== id
-          );
           this.cdr.detectChanges();
         });
-      }, 1000);
-    });
+
+        setTimeout(() => {
+          this.ngZone.run(() => {
+            this.floatingNumbers = this.floatingNumbers.filter(
+              (n) => n.id !== id
+            );
+            this.cdr.detectChanges();
+          });
+        }, 1000);
+      });
+    } else {
+      this.gameService.mineTimeFragment();
+    }
   }
 
   getMiningValue(building: Building): number {
@@ -1257,13 +1330,17 @@ export class BuildingPanelComponent {
     switch (building.effect?.type) {
       case 'tick_rate':
       case 'cost_reduction':
-        const totalReduction = 1 - Math.pow(value, amount);
-        return Math.round(totalReduction * 10000) / 100;
+        const reductionTotal = 1 - Math.pow(value, amount);
+        return Math.round(reductionTotal * 10000) / 100;
 
       case 'production_boost':
-        // Calculer l'augmentation totale de production en prenant en compte le niveau
-        const totalBoost = Math.pow(value, amount);
-        return Math.round((totalBoost - 1) * 10000) / 100;
+        const boostTotal = Math.pow(value, amount);
+        return Math.round((boostTotal - 1) * 10000) / 100;
+
+      case 'resource_multiplier':
+        // Progression linéaire de 10% par niveau
+        const multiplierPerLevel = value;
+        return amount * multiplierPerLevel * 100;
 
       default:
         return (value - 1) * 100;
@@ -1319,7 +1396,7 @@ export class BuildingPanelComponent {
     const level = this.gameService.getBuildingAmount(building.id);
     const baseDuration = building.effect.jumpDuration ?? 60000;
     const durationIncrease = (building.effect.durationIncrease ?? 0.05) * level;
-    return (baseDuration * (1 + durationIncrease)) / 1000; // Convertir en secondes
+    return (baseDuration * (1 + durationIncrease)) / 1000;
   }
 
   getCooldownDuration(building: BuildingWithProduction): number {
@@ -1328,7 +1405,7 @@ export class BuildingPanelComponent {
     const cooldownDuration = building.effect.cooldown ?? 300000;
     const cooldownReduction =
       (building.effect.cooldownReduction ?? 0.05) * level;
-    return (cooldownDuration * (1 - cooldownReduction)) / 1000; // Convertir en secondes
+    return (cooldownDuration * (1 - cooldownReduction)) / 1000;
   }
 
   isMaxLevel(building: Building | BuildingWithProduction): boolean {

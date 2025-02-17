@@ -35,5 +35,6 @@ export interface SkillBranch {
   name: string;
   description: string;
   color: string;
+  icon: string;
   skills: Skill[];
 }

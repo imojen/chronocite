@@ -537,6 +537,65 @@ import { SkillTreeComponent } from '../skill-tree/skill-tree.component';
         border: 1px solid rgba(255, 78, 78, 0.2);
         box-shadow: 0 0 10px rgba(255, 78, 78, 0.2);
       }
+
+      @media (max-width: 1024px) {
+        .resource-panel {
+          padding: 1rem;
+          gap: 1rem;
+        }
+
+        .amount {
+          font-size: 2rem;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .resource-panel {
+          padding: 0.75rem;
+          gap: 0.75rem;
+        }
+
+        .counter-section {
+          padding: 0.25rem;
+        }
+
+        .amount {
+          font-size: 1.75rem;
+          margin-bottom: 0.25rem;
+        }
+
+        .label {
+          font-size: 0.8rem;
+        }
+
+        .stats-section {
+          flex-direction: row;
+          justify-content: space-around;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .resource-panel {
+          padding: 0.5rem;
+          gap: 0.5rem;
+        }
+
+        .amount {
+          font-size: 1.5rem;
+        }
+
+        .label {
+          font-size: 0.75rem;
+        }
+
+        .stats-section {
+          flex-wrap: wrap;
+        }
+
+        .stat-row {
+          width: 100%;
+        }
+      }
     `,
   ],
 })
