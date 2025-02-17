@@ -618,33 +618,37 @@ export class GameService implements OnDestroy {
             );
             break;
           case 'cost_reduction':
+            if (building.effect.value && building.effect.value < 0) {
+              // Réduction additive pour les valeurs négatives
+              effects.globalCostReduction *= 1 + building.effect.value * amount;
+            } else {
+              // Réduction multiplicative pour les valeurs positives
+              effects.globalCostReduction *= Math.pow(
+                building.effect.value ?? 1,
+                amount
+              );
+            }
             // Limite la réduction des coûts à 75% maximum
             effects.globalCostReduction = Math.max(
               0.25,
-              effects.globalCostReduction *
-                Math.pow(building.effect.value ?? 1, amount)
+              effects.globalCostReduction
             );
             break;
           case 'production_boost':
             if (building.effect.target) {
-              // Pour les bonus ciblés, on utilise une progression logarithmique
-              // Cela donne une croissance plus rapide au début qui ralentit progressivement
+              // Pour les bonus ciblés
               const targetBoost =
-                Math.log10(amount + 1) *
-                (building.effect.value ? (building.effect.value - 1) * 10 : 1);
+                amount *
+                (building.effect.value ? building.effect.value - 1 : 0);
               effects.buildingMultipliers[building.effect.target] =
                 (effects.buildingMultipliers[building.effect.target] || 1) *
                 (1 + targetBoost);
             } else {
-              // Pour les bonus globaux, on utilise aussi une progression logarithmique
-              // mais avec une limite plus basse pour éviter les bonus trop puissants
-              const baseBoost = building.effect.value
-                ? (building.effect.value - 1) * 5
-                : 0.15;
-              const globalBoost = Math.log10(amount + 1) * baseBoost;
-              // On limite à x3 (300%) par bâtiment pour le bonus global
-              const limitedBoost = Math.min(3, 1 + globalBoost);
-              effects.globalProductionBoost *= limitedBoost;
+              // Pour les bonus globaux
+              const globalBoost =
+                amount *
+                (building.effect.value ? building.effect.value - 1 : 0);
+              effects.globalProductionBoost *= 1 + globalBoost;
             }
             break;
           case 'resource_multiplier':
@@ -700,6 +704,11 @@ export class GameService implements OnDestroy {
       // Optimisation des Cycles : +25% points de prestige
       if (state.skills['cycle_optimization']?.purchased) {
         effects.prestigeGainMultiplier *= 1.25;
+      }
+
+      // Maîtrise du Prestige : +50% d'efficacité des bonus de prestige
+      if (state.skills['prestige_mastery']?.purchased) {
+        effects.prestigeGainMultiplier *= 1.5;
       }
 
       // Maîtrise Économique : +10% production par niveau de réduction de coût
