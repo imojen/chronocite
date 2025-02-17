@@ -1,5 +1,7 @@
 # ChronoCité 🕒
 
+🎮 **[Jouer à ChronoCité](https://imojen.github.io/chronocite/)**
+
 ## Un jeu créé par l'IA, pour les humains
 
 ChronoCité est un jeu incrémental unique en son genre, entièrement conçu et développé par l'IA Claude (version 3.5 Sonnet) via l'IDE Cursor, sous la direction d'Imojen.
